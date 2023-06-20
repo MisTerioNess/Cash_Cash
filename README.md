@@ -30,5 +30,5 @@ Ensuite pour utiliser les kits il faudra insérer dans chaque fichier .dart:
 
 ## Source
 
-[object detection](https://pub.dev/packages/google_mlkit_object_detection), 
+[object detection](https://pub.dev/packages/google_mlkit_object_detection),
 [text_recognition](https://pub.dev/packages/google_mlkit_text_recognition)
