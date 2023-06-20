@@ -18,7 +18,7 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
     
-## Installation
+# Installation
 
 Entrer ceci dans un terminal: 
 - flutter pub add google_mlkit_object_detection ;
@@ -28,9 +28,9 @@ Ensuite pour utiliser les kits il faudra insérer dans chaque fichier .dart:
 - ```import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';```
 - ```import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';```
 
-## Utiliser un téléphone physique
+# Utiliser un téléphone physique
 
-# Android
+## Android
 
 - sur votre téléphone 
 il faut activer le mode développeur en cliquant plusieurs fois sur le numéro de série puis
@@ -44,9 +44,9 @@ Enfin il faut brancher le téléphone à l'ordinateur via USB et autoriser le d�
 la pop-up apparaitra. 
 Dès lors que ceci est fait vous aurez le nom du modèle de votre téléphone dans la sélection des appareils.
 
-# IOS (WIP)
+## IOS (WIP)
 
-## Source
+# Source
 
 [object detection](https://pub.dev/packages/google_mlkit_object_detection),
 [text_recognition](https://pub.dev/packages/google_mlkit_text_recognition)
