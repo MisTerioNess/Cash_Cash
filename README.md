@@ -17,8 +17,8 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
-
-## Pré-requis
+    
+## Installation
 
 Entrer ceci dans un terminal: 
 - flutter pub add google_mlkit_object_detection ;
@@ -30,5 +30,5 @@ Ensuite pour utiliser les kits il faudra insérer dans chaque fichier .dart:
 
 ## Source
 
-[object detection](https://pub.dev/packages/google_mlkit_object_detection), 
+[object detection](https://pub.dev/packages/google_mlkit_object_detection),
 [text_recognition](https://pub.dev/packages/google_mlkit_text_recognition)
