@@ -41,6 +41,7 @@ dependencies:
   # import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 dev_dependencies:
+  flutter_launcher_icons: "^0.9.2"
   flutter_test:
     sdk: flutter
 
@@ -92,3 +93,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+flutter_icons:
+  image_path: "assets/cc_icon.png"
+  android: true
+  ios: true

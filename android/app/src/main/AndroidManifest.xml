@@ -1,12 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.cash_cash">
-
     <uses-feature
         android:name="android.hardware.camera"
         android:required="true" />
     <uses-permission android:name="android.permission.CAMERA"/>
-    <application
-        android:label="cash_cash"
+   <application
+        android:label="Cash cash"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
