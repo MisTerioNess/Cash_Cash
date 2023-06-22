@@ -39,8 +39,9 @@ flutter pub add google_mlkit_text_recognition
 ```
 
 Ensuite pour utiliser les kits il faudra insérer dans chaque fichier .dart:
-```import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';```
-```import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';```
+```console 
+import 'lib/module/google_mlkit_imports.dart';
+```
 
 # Utiliser un téléphone physique
 
