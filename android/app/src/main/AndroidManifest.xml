@@ -4,8 +4,17 @@
         android:name="android.hardware.camera"
         android:required="true" />
     <uses-permission android:name="android.permission.CAMERA"/>
-   <application
-        android:label="Cash cash"
+    <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="vertical"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent">
+        <FrameLayout
+            android:id="@+id/frameLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+    </RelativeLayout>
+    <application
+        android:label="cash_cash"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

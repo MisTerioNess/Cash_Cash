@@ -57,7 +57,7 @@ il faut installer le pilote OEM de la marque du téléphone utilisé via ce lien
 
 Enfin il faut brancher le téléphone à l'ordinateur via USB et autoriser le débogage USB lorsque
 la pop-up apparaitra. 
-Dès lors que ceci est fait vous aurez le nom du modèle de votre téléphone dans la sélection des appareils.
+Dès lors que ceci est fait vous aurez le nom du modèle de votre téléphone dans la sélection des appareils de Android Studio.
 
 ## IOS (WIP)
 
