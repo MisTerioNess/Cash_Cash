@@ -63,4 +63,5 @@ Dès lors que ceci est fait vous aurez le nom du modèle de votre téléphone da
 # Source
 
 [object detection](https://pub.dev/packages/google_mlkit_object_detection),
-[text_recognition](https://pub.dev/packages/google_mlkit_text_recognition)
+[text_recognition](https://pub.dev/packages/google_mlkit_text_recognition),
+[incorporer la camera](https://developer.android.com/training/permissions/declaring?hl=fr)
