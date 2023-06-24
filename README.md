@@ -32,15 +32,7 @@ cd Cash_Cash
 
 Installation des dépendances.
 ```console
-flutter pub add google_mlkit_object_detection
-```
-```console
-flutter pub add google_mlkit_text_recognition
-```
-
-Ensuite pour utiliser les kits il faudra insérer dans chaque fichier .dart:
-```console 
-import 'lib/module/google_mlkit_imports.dart';
+flutter pub get
 ```
 
 # Utiliser un téléphone physique
