@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:camera/camera.dart' show CameraController, CameraPreview, ResolutionPreset, availableCameras;
+import 'package:camera/camera.dart' show CameraController, CameraDescription, CameraPreview, ResolutionPreset, availableCameras;
 
 class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -10,6 +10,8 @@ class MyApp extends StatefulWidget {
 
 class MobileCamera extends State<MyApp> {
   CameraController? _cameraController;
+
+  List<CameraDescription> get cameras => <CameraDescription>[];
 
   Future<void> _initializeCamera() async {
     final cameras = await availableCameras();
