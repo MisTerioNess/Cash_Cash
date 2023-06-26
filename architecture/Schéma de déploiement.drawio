@@ -1,0 +1,49 @@
+<mxfile host="app.diagrams.net" modified="2023-06-26T08:02:57.103Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.58" etag="lvrR7LiK7saopTFIOCaG" version="21.5.0" type="google">
+  <diagram name="Page-1" id="ul9HzATKlbqBeQQZgFfF">
+    <mxGraphModel dx="756" dy="440" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-4" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="500" y="210" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-1" value="Serveur Web" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;" vertex="1" parent="S0FPKEkwvxTzM2rvQ-IX-4">
+          <mxGeometry width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-2" value="Site Web" style="shape=module;align=left;spacingLeft=20;align=center;verticalAlign=top;whiteSpace=wrap;html=1;" vertex="1" parent="S0FPKEkwvxTzM2rvQ-IX-4">
+          <mxGeometry x="60" y="50" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="S0FPKEkwvxTzM2rvQ-IX-4" source="S0FPKEkwvxTzM2rvQ-IX-2" target="S0FPKEkwvxTzM2rvQ-IX-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-5" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="150" y="120" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-6" value="Smartphone" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;" vertex="1" parent="S0FPKEkwvxTzM2rvQ-IX-5">
+          <mxGeometry width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-7" value="Application Mobile" style="shape=module;align=left;spacingLeft=20;align=center;verticalAlign=top;whiteSpace=wrap;html=1;" vertex="1" parent="S0FPKEkwvxTzM2rvQ-IX-5">
+          <mxGeometry x="60" y="50" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="S0FPKEkwvxTzM2rvQ-IX-5" source="S0FPKEkwvxTzM2rvQ-IX-7" target="S0FPKEkwvxTzM2rvQ-IX-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-20" value="" style="group" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="540" y="40" width="160" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-18" value="PC Utilisateur" style="verticalAlign=top;align=left;spacingTop=8;spacingLeft=2;spacingRight=12;shape=cube;size=10;direction=south;fontStyle=4;html=1;whiteSpace=wrap;" vertex="1" parent="S0FPKEkwvxTzM2rvQ-IX-20">
+          <mxGeometry width="160" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-19" value="Navigateur web" style="shape=module;align=left;spacingLeft=20;align=center;verticalAlign=top;whiteSpace=wrap;html=1;" vertex="1" parent="S0FPKEkwvxTzM2rvQ-IX-20">
+          <mxGeometry x="20" y="40" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="S0FPKEkwvxTzM2rvQ-IX-19" target="S0FPKEkwvxTzM2rvQ-IX-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="S0FPKEkwvxTzM2rvQ-IX-23" value="HTTP" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="595" y="170" width="50" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
