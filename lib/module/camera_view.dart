@@ -7,8 +7,10 @@ import 'package:image_picker/image_picker.dart';
 
 import '../main.dart';
 
+/// Définition des mode.
 enum ScreenMode { liveFeed, gallery }
 
+/// Représente une vue de la caméra.
 class CameraView extends StatefulWidget {
   const CameraView(
       {Key? key,
@@ -31,6 +33,7 @@ class CameraView extends StatefulWidget {
   State<CameraView> createState() => _CameraViewState();
 }
 
+/// Mise à jour de la vue avec la caméra.
 class _CameraViewState extends State<CameraView> {
   ScreenMode _mode = ScreenMode.liveFeed;
   CameraController? _controller;
@@ -42,6 +45,7 @@ class _CameraViewState extends State<CameraView> {
   final bool _allowPicker = true;
   bool _changingCameraLens = false;
 
+  /// Initialisation de l'état de base.
   @override
   void initState() {
     super.initState();
@@ -74,12 +78,14 @@ class _CameraViewState extends State<CameraView> {
     }
   }
 
+  /// Vide la mémoire.
   @override
   void dispose() {
     _stopLiveFeed();
     super.dispose();
   }
 
+  /// Met à jour un widget.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,6 +114,7 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
+  /// Met à jour un widget.
   Widget? _floatingActionButton() {
     if (_mode == ScreenMode.gallery) return null;
     if (cameras.length == 1) return null;
@@ -125,6 +132,7 @@ class _CameraViewState extends State<CameraView> {
         ));
   }
 
+  /// Met à jour un widget.
   Widget _body() {
     Widget body;
     if (_mode == ScreenMode.liveFeed) {
@@ -135,6 +143,7 @@ class _CameraViewState extends State<CameraView> {
     return body;
   }
 
+  /// Met à jour un widget.
   Widget _liveFeedBody() {
     if (_controller?.value.isInitialized == false) {
       return Container();
@@ -190,6 +199,7 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
+  /// Met à jour un widget.
   Widget _galleryBody() {
     return ListView(shrinkWrap: true, children: [
       _image != null
@@ -243,6 +253,7 @@ class _CameraViewState extends State<CameraView> {
     setState(() {});
   }
 
+  /// Change le mode de la caméra
   void _switchScreenMode() {
     _image = null;
     if (_mode == ScreenMode.liveFeed) {
@@ -258,11 +269,12 @@ class _CameraViewState extends State<CameraView> {
     setState(() {});
   }
 
+  /// Démarre la preview de la caméra.
   Future _startLiveFeed() async {
     final camera = cameras[_cameraIndex];
     _controller = CameraController(
       camera,
-      // Set to ResolutionPreset.high. Do NOT set it to ResolutionPreset.max because for some phones does NOT work.
+      // Ne pas mettre la résolution sur ResolutionPreset.max. Sur certains modèles de téléphone, elle n'existe pas
       ResolutionPreset.high,
       enableAudio: false,
       imageFormatGroup: Platform.isAndroid
@@ -285,12 +297,14 @@ class _CameraViewState extends State<CameraView> {
     });
   }
 
+  /// Stop la preview de la caméra.
   Future _stopLiveFeed() async {
     await _controller?.stopImageStream();
     await _controller?.dispose();
     _controller = null;
   }
 
+  /// Change le mode de preview de la caméra.
   Future _switchLiveCamera() async {
     setState(() => _changingCameraLens = true);
     _cameraIndex = (_cameraIndex + 1) % cameras.length;
@@ -300,6 +314,7 @@ class _CameraViewState extends State<CameraView> {
     setState(() => _changingCameraLens = false);
   }
 
+  /// Analyse l'image fournis par l'utilisateur.
   Future _processPickedFile(XFile? pickedFile) async {
     final path = pickedFile?.path;
     if (path == null) {
@@ -313,12 +328,14 @@ class _CameraViewState extends State<CameraView> {
     widget.onImage(inputImage);
   }
 
+  /// Analyse l'image fournis par la caméra.
   void _processCameraImage(CameraImage image) {
     final inputImage = _inputImageFromCameraImage(image);
     if (inputImage == null) return;
     widget.onImage(inputImage);
   }
 
+  /// Transforme l'image de la caméra en image statique.
   InputImage? _inputImageFromCameraImage(CameraImage image) {
     // get camera rotation
     final camera = cameras[_cameraIndex];
