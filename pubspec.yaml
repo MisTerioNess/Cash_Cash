@@ -40,6 +40,7 @@ dependencies:
   image_picker: ^0.8.9
   path: ^1.8.2
   path_provider: ^2.0.15
+  image: ^4.0.17
 
 flutter_icons:
   image_path: "assets/cc_icon.png"

@@ -17,7 +17,7 @@ Future<void> main() async {
 /// Fonction principale du projet.
 ///
 /// @param key : nombre entier.
-/// @return La page d'acceuil del'application.
+/// @return La page d'accueil de l'application.
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
