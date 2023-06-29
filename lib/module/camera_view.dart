@@ -1,12 +1,10 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
-import 'package:cash_cash/module/painters/painters.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';
-import 'package:google_ml_kit/google_ml_kit.dart';
+import 'package:google_mlkit_commons/google_mlkit_commons.dart';
+
 import 'package:image_picker/image_picker.dart';
-import 'object_detector.dart';
 
 import '../main.dart';
 
@@ -15,7 +13,7 @@ enum ScreenMode { liveFeed, gallery }
 
 /// Représente une vue de la caméra.
 class CameraView extends StatefulWidget {
-  const CameraView(
+  CameraView(
       {Key? key,
         required this.title,
         required this.customPaint,
@@ -32,6 +30,7 @@ class CameraView extends StatefulWidget {
   final Function(ScreenMode mode)? onScreenModeChanged;
   final CameraLensDirection initialDirection;
 
+
   @override
   State<CameraView> createState() => _CameraViewState();
 }
@@ -40,10 +39,7 @@ class CameraView extends StatefulWidget {
 class _CameraViewState extends State<CameraView> {
   ScreenMode _mode = ScreenMode.liveFeed;
   CameraController? _controller;
-  ObjectDetector? _detector;
-  CustomPaint? _customPaint;
   File? _image;
-  XFile? _picture;
   String? _path;
   ImagePicker? _imagePicker;
   int _cameraIndex = -1;
@@ -57,11 +53,6 @@ class _CameraViewState extends State<CameraView> {
     super.initState();
 
     _imagePicker = ImagePicker();
-    _detector = ObjectDetector(options: ObjectDetectorOptions(
-        classifyObjects: true,
-        multipleObjects: true,
-        mode: DetectionMode.single
-    )); //GoogleMlKit.vision.objectDetector(options: ObjectDetectorOptions);
 
     if (cameras.any(
           (element) =>
@@ -83,16 +74,10 @@ class _CameraViewState extends State<CameraView> {
     }
 
     if (_cameraIndex != -1) {
-      //_getImage(ImageSource.camera);
       _startLiveFeed();
     } else {
       _mode = ScreenMode.gallery;
     }
-  }
-
-  Future<void> initiliazeCamera() async {
-    _controller = CameraController(cameras[_cameraIndex], ResolutionPreset.medium);
-    await _controller?.initialize();
   }
 
   /// Vide la mémoire.
@@ -128,39 +113,22 @@ class _CameraViewState extends State<CameraView> {
       body: _body(),
       floatingActionButton: _floatingActionButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      persistentFooterButtons: [_floatingActionButton2()],
     );
   }
 
-  /// Widget du bouton pour changer le sens de la caméra.
+  /// Met à jour un widget.
   Widget? _floatingActionButton() {
     if (_mode == ScreenMode.gallery) return null;
     if (cameras.length == 1) return null;
     return SizedBox(
-        height: 50.0,
-        width: 50.0,
+        height: 70.0,
+        width: 70.0,
         child: FloatingActionButton(
           onPressed: _switchLiveCamera,
           child: Icon(
             Platform.isIOS
                 ? Icons.flip_camera_ios_outlined
                 : Icons.flip_camera_android_outlined,
-            size: 20,
-          ),
-        ));
-  }
-  Widget _floatingActionButton2() {
-    //if (_mode == ScreenMode.gallery) return null;
-    //if (cameras.length == 1) return null;
-    return SizedBox(
-        height: 50.0,
-        width: 50.0,
-        child: FloatingActionButton(
-          onPressed: _getCameraImage,
-          child: Icon(
-            Platform.isIOS
-                ? Icons.photo_camera_outlined
-                : Icons.photo_camera,
             size: 40,
           ),
         ));
@@ -269,7 +237,7 @@ class _CameraViewState extends State<CameraView> {
       if (_image != null)
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child:Text(
+          child: Text(
               '${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
         ),
     ]);
@@ -281,18 +249,10 @@ class _CameraViewState extends State<CameraView> {
       _path = null;
     });
     final pickedFile = await _imagePicker?.pickImage(source: source);
-
     if (pickedFile != null) {
-      print("_getImage path:" + pickedFile.path);
       _processPickedFile(pickedFile);
     }
     setState(() {});
-  }
-  Future _getCameraImage() async {
-    _controller = CameraController(cameras[_cameraIndex], ResolutionPreset.medium);
-    await _controller!.initialize();
-    final XFile photo = await _controller!.takePicture();
-    print("saluuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu");
   }
 
   /// Change le mode de la caméra
@@ -368,36 +328,6 @@ class _CameraViewState extends State<CameraView> {
     _path = path;
     final inputImage = InputImage.fromFilePath(path);
     widget.onImage(inputImage);
-
-    /*final List<DetectedObject> dobjs = await _detector!.processImage(inputImage);
-    final painter = ObjectDetectorPainter(
-        dobjs, inputImage.metadata!.rotation, inputImage.metadata!.size);
-    _customPaint = CustomPaint(painter: painter);*/
-
-    /*for (var detectedObject in dobjs) {
-      final rect = _scaleRect(detectedObject.boundingBox, imageSize);
-
-      // Dessiner le contour de l'objet
-      canvas.drawRect(rect, borderPaint);
-
-      // Dessiner l'étiquette de l'objet
-      final label = '${detectedObject.labels.first.label} (${(detectedObject.labels.first.confidence * 100).toStringAsFixed(1)}%)';
-      final textSpan = TextSpan(
-        text: label,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          backgroundColor: Colors.red,
-        ),
-      );
-      final textPainter = TextPainter(
-        text: textSpan,
-        textDirection: TextDirection.ltr,
-        textAlign: TextAlign.center,
-      );
-      textPainter.layout(minWidth: 0, maxWidth: rect.width);
-      textPainter.paint(canvas, Offset(rect.left, rect.top - textPainter.height - 4));
-    }*/
   }
 
   /// Analyse l'image fournis par la caméra.
