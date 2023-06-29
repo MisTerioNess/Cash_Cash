@@ -1,2 +1,0 @@
-export 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';
-export 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
