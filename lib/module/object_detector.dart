@@ -48,12 +48,14 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         customPaint: _customPaint,
         text: _text,
         onImage: (inputImage) {
+
           processImage(inputImage);
         },
         onScreenModeChanged: _onScreenModeChanged,
         initialDirection: CameraLensDirection.back,
       );
     }
+
 
     /// Changement de mode. LivePreview ou Galerie.
     void _onScreenModeChanged(ScreenMode mode) {
@@ -125,13 +127,16 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         _customPaint = CustomPaint(painter: painter);
       } else {
         String text = 'Objects found: ${objects.length}\n\n';
+
         for (final object in objects) {
+          //object.
           text +=
           'Object:  trackingId: ${object.trackingId} - ${object.labels.map((e) => e.text)}\n\n';
         }
         _text = text;
         // TODO: set _customPaint to draw boundingRect on top of image
         _customPaint = null;
+
       }
       _isBusy = false;
       if (mounted) {
@@ -154,4 +159,5 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       }
       return file.path;
     }
+  }
 }
