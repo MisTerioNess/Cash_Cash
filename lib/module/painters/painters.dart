@@ -6,6 +6,7 @@ import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart
 
 import 'coordinates_translator.dart';
 
+/// Gère les rectangles affichés lors de la preview.
 class ObjectDetectorPainter extends CustomPainter {
   ObjectDetectorPainter(this._objects, this.rotation, this.absoluteSize);
 
@@ -13,6 +14,7 @@ class ObjectDetectorPainter extends CustomPainter {
   final Size absoluteSize;
   final InputImageRotation rotation;
 
+  /// Affichage des retangles autour des objets.
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
@@ -62,6 +64,7 @@ class ObjectDetectorPainter extends CustomPainter {
     }
   }
 
+  ///ReAffichage des retangles autour des objets.
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

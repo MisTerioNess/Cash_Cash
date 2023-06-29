@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 
+/// Effectue une translation de la coordonnée x en fonction de la rotation de l'image d'entrée et des dimensions spécifiées
 double translateX(
     double x, InputImageRotation rotation, Size size, Size absoluteImageSize) {
   switch (rotation) {
@@ -22,6 +23,7 @@ double translateX(
   }
 }
 
+/// Effectue une translation de la coordonnée y en fonction de la rotation de l'image d'entrée et des dimensions spécifiées
 double translateY(
     double y, InputImageRotation rotation, Size size, Size absoluteImageSize) {
   switch (rotation) {
