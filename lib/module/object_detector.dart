@@ -7,6 +7,8 @@ import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'camera_view.dart';
+import 'package:image/image.dart' as img;
+import 'dart:io';
 
 /// Cette classe est utilisée pour définir une vue qui peut être mise à jour dynamiquement en réponse à des changements d'état.
 class ObjectDetectorView extends StatefulWidget {
@@ -126,6 +128,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
             objects, inputImage.metadata!.rotation, inputImage.metadata!.size);
         _customPaint = CustomPaint(painter: painter);
       } else {
+<<<<<<< HEAD
         String text = 'Objects found: ${objects.length}\n\n';
 
         for (final object in objects) {
@@ -133,10 +136,18 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
           text +=
           'Object:  trackingId: ${object.trackingId} - ${object.labels.map((e) => e.text)}\n\n';
         }
-        _text = text;
-        // TODO: set _customPaint to draw boundingRect on top of image
-        _customPaint = null;
+        // Create a File object with the picture
+        String? path = inputImage.filePath;
+        final file = File(path!);
+        final img.Image? image = img.decodeImage(await file.readAsBytes());
+        // Get the size of the image
+        final double? width = image?.width.toDouble();
+        final double? height = image?.height.toDouble();
 
+        // Add rect on objects detected.
+        final painter = ObjectDetectorPainter(
+            objects, InputImageRotation.rotation0deg, Size(width!, height!));
+        _customPaint = CustomPaint(painter: painter);
       }
       _isBusy = false;
       if (mounted) {
