@@ -42,7 +42,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-/fastApiProject/tmp/**
+/fastApiProject/tmp/*.png
 /fastApiProject/Cash_Cash
 
 # SonarQube

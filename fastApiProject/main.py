@@ -29,17 +29,6 @@ class Item(BaseModel):
 def read_root():
     return {"Hello": "World"}
 
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
-
-
-@app.put("/items/{item_id}")
-def update_item(item_id: int, item: Item):
-    return {"item_name": item.name, "item_id": item_id}
-
-
 @app.post("/image")
 async def upload_image(image: UploadFile = File()):
     content = await image.read(),
@@ -48,7 +37,7 @@ async def upload_image(image: UploadFile = File()):
     save_path = Path("tmp") / image.filename
     with save_path.open("wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
-    print(object_detector(save_path))
+    object_detector(save_path)
     return {"n'importe quoi"}
 
 
@@ -94,4 +83,4 @@ def object_detector(image_path):
 
         # Découpez l'image et sauvegardez-la
         cropped_img = img.crop(box)
-        cropped_img.save(f'object_{i}.jpg')
+        cropped_img.save(f'tmp/objects/object_{i}.png')

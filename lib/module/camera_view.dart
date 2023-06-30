@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
+
 import 'package:image_picker/image_picker.dart';
 
 import '../main.dart';
@@ -12,7 +13,7 @@ enum ScreenMode { liveFeed, gallery }
 
 /// Représente une vue de la caméra.
 class CameraView extends StatefulWidget {
-  const CameraView(
+  CameraView(
       {Key? key,
         required this.title,
         required this.customPaint,
@@ -28,6 +29,7 @@ class CameraView extends StatefulWidget {
   final Function(InputImage inputImage) onImage;
   final Function(ScreenMode mode)? onScreenModeChanged;
   final CameraLensDirection initialDirection;
+
 
   @override
   State<CameraView> createState() => _CameraViewState();
