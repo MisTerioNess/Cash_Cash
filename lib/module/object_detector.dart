@@ -8,7 +8,6 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'camera_view.dart';
 import 'package:image/image.dart' as img;
-import 'dart:io';
 
 /// Cette classe est utilisée pour définir une vue qui peut être mise à jour dynamiquement en réponse à des changements d'état.
 class ObjectDetectorView extends StatefulWidget {
@@ -52,9 +51,18 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         onImage: (inputImage) {
           processImage(inputImage);
         },
+        resetCustomPaint: (customPaint) {
+          resetCustomPaint(customPaint);
+        },
         onScreenModeChanged: _onScreenModeChanged,
         initialDirection: CameraLensDirection.back,
       );
+    }
+
+    void resetCustomPaint(CustomPaint? value) {
+      setState(() {
+        _customPaint = value;
+      });
     }
 
     /// Changement de mode. LivePreview ou Galerie.
@@ -128,7 +136,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       } else {
         // Create a File object with the picture
         String? path = inputImage.filePath;
-        final file = File(path!);
+        final file = io.File(path!);
         final img.Image? image = img.decodeImage(await file.readAsBytes());
         // Get the size of the image
         final double? width = image?.width.toDouble();
