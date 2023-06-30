@@ -37,10 +37,15 @@ dependencies:
   flutter_launcher_icons: ^0.13.1
   google_mlkit_object_detection: ^0.8.0
   google_mlkit_commons: ^0.4.0
+  universal_platform: ^1.0.0+1
+  file_picker: ^5.3.1
+  dio: ^5.2.1+1
   image_picker: ^0.8.9
   path: ^1.8.2
   path_provider: ^2.0.15
   image: ^4.0.17
+  image_cropper: ^5.0.0
+  http : ^1.0.0
 
 flutter_icons:
   image_path: "assets/cc_icon.png"

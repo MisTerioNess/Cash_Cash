@@ -1,18 +1,31 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'module/object_detector.dart';
+import 'package:universal_platform/universal_platform.dart';
+import 'mainWeb.dart';
+
 
 /// Initialisation d'une liste qui va contenir les caméras de l'appareil de l'utilisateur.
 List<CameraDescription> cameras = [];
 
-/// Fonction princiaple.
-Future<void> main() async {
-  /// S'assure que les widgets sont initialisés correctement avant d'exécuter le reste du code.
-  WidgetsFlutterBinding.ensureInitialized();
+void main() async{
+  bool isWeb = UniversalPlatform.isWeb;
+  if (isWeb){
+    runApp(MyWebApp());
+    print("la version web");
+  }
+  else{
+    /// S'assure que les widgets sont initialisés correctement avant d'exécuter le reste du code.
+    WidgetsFlutterBinding.ensureInitialized();
 
-  cameras = await availableCameras();
-  runApp(MyApp());
+    cameras = await availableCameras();
+    runApp(MyApp());
+    print("la version mobile");
+  }
+
 }
+
+
 
 /// Fonction principale du projet.
 ///
@@ -20,6 +33,12 @@ Future<void> main() async {
 /// @return La page d'accueil de l'application.
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
+  Future<void> main() async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    cameras = await availableCameras();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,3 +48,4 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+  

@@ -24,6 +24,32 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
     bool _isBusy = false;
     CustomPaint? _customPaint;
     String? _text;
+    img.Image? croppedImage;
+
+    void uploadImage(File imageFile) async {
+      // L'URL de votre endpoint de téléchargement
+      var uri = Uri.parse('http://149.202.49.224:49153/image');
+
+      // Créer une requête multipart
+      var request = http.MultipartRequest('POST', uri);
+
+      // Ajouter le fichier à la requête
+      request.files.add(await http.MultipartFile.fromPath(
+        'file', // le nom du paramètre POST pour le fichier
+        imageFile.path,
+        filename: basename(imageFile.path), // le nom du fichier à envoyer
+      ));
+
+      // Envoyer la requête
+      var response = await request.send();
+
+      // Vérifier la réponse
+      if (response.statusCode == 200) {
+        print('Upload successful');
+      } else {
+        print('Upload failed with status: ${response.statusCode}');
+      }
+    }
 
     /// Initialisation de l'état de base.
     @override
@@ -148,11 +174,39 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         _customPaint = CustomPaint(painter: painter);
 
         // String text = 'Objects found: ${objects.length}\n\n';
-        // for (final object in objects) {
-        //   text +=
-        //   'Object:  trackingId: ${object.trackingId} - ${object.labels.map((e) => e.text)}\n\n';
-        // }
+        for (final object in objects) {
+          uploadImage(file);
+          // print(object.boundingBox);
+          // print("INFOS DU RECTANGLE");
+          // print(object.boundingBox.size.width);
+          // print(object.boundingBox.size.height);
+          // final int width = object.boundingBox.size.width.toInt();
+          // final int height = object.boundingBox.size.height.toInt();
+          // final img.Image cropImage = img.copyCrop(image!, x: 50, y: 50, width: width, height: height);
+          // croppedImage = cropImage;
+          // print("C'est le objectRect");
+          // Rect objectRect = object.boundingBox;
+          // img.Image croppedImage = img.copyCrop(image!, x: objectRect.left.round(), y: objectRect.top.round(), width: objectRect.width.round(), height: objectRect.height.round());
+          // // Convertir l'image extraite en bytes.
+          // print("Je suis en train de convertir l'image");
+          // Uint8List croppedBytes = img.encodePng(croppedImage);
+          // List<int> pngBytes = croppedBytes.buffer.asUint8List();
+          //
+          // // Obtenir un chemin de fichier pour enregistrer l'image
+          // print("J'obtiens le chemin d'acces");
+          // Directory appDocDir = await getApplicationDocumentsDirectory();
+          // String path = '${appDocDir.path}/cropped.png';
+          // print(appDocDir.path);
+          //
+          // // Enregistrer l'image dans un fichier
+          // print("J'enregistre l'image");
+          // File file = File(path);
+          // await file.writeAsBytes(pngBytes);
+
+          _text = 'Object:  trackingId: ${object.trackingId} - ${object.labels.map((e) => e.text)}\n\n';
+        }
         // _text = text;
+
       }
       _isBusy = false;
       if (mounted) {
