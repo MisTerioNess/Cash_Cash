@@ -12,7 +12,6 @@ void main() async{
   bool isWeb = UniversalPlatform.isWeb;
   if (isWeb){
     runApp(MyWebApp());
-    print("la version web");
   }
   else{
     /// S'assure que les widgets sont initialisés correctement avant d'exécuter le reste du code.
@@ -20,7 +19,6 @@ void main() async{
 
     cameras = await availableCameras();
     runApp(MyApp());
-    print("la version mobile");
   }
 
 }
