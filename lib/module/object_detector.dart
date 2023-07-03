@@ -147,6 +147,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
             objects, inputImage.metadata!.rotation, inputImage.metadata!.size);
         _customPaint = CustomPaint(painter: painter);
       } else {
+
         final objects = await _objectDetectorImage.processImage(inputImage);
         // Create a File object with the picture
         String? path = inputImage.filePath;
@@ -155,6 +156,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         // Get the size of the image
         final double? width = image?.width.toDouble();
         final double? height = image?.height.toDouble();
+        print(Size(width!, height!));
 
         // Add rect on objects detected.
         final painter = ObjectDetectorPainter(
@@ -162,10 +164,8 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         _customPaint = CustomPaint(painter: painter);
 
         // String text = 'Objects found: ${objects.length}\n\n';
-        for (final object in objects) {
-          _text = 'Object:  trackingId: ${object.trackingId} - ${object.labels.map((e) => e.text)}\n\n';
-        }
-        uploadImage(file);
+
+        //uploadImage(file);
 
       }
       _isBusy = false;
