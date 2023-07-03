@@ -411,7 +411,7 @@ class _CameraViewState extends State<CameraView> {
         child: Column(
           children: [
             SizedBox(
-              height: 400,
+              height: 550,
               width: 400,
               child: Stack(
                 fit: StackFit.expand,
@@ -454,7 +454,7 @@ class _CameraViewState extends State<CameraView> {
               child: ListTile(
                 leading: Icon(Icons.request_quote_outlined, size: 36),
                 title: Text("Montant des chèques: "),
-                subtitle: Text("Nombre de chèques")
+                subtitle: Text("Nombre de chèques: ")
               )
             )
           ],
