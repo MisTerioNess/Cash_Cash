@@ -22,6 +22,7 @@ class ObjectDetectorView extends StatefulWidget {
 /// Mise à jour de la vue.
 class _ObjectDetectorView extends State<ObjectDetectorView> {
     late ObjectDetector _objectDetector;
+    late ObjectDetector _objectDetectorImage;
     bool _canProcess = false;
     bool _isBusy = false;
     CustomPaint? _customPaint;
@@ -39,7 +40,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       request.files.add(await http.MultipartFile.fromPath(
         'image', // le nom du paramètre POST pour le fichier
         imageFile.path,
-        filename: basename(imageFile.path), // le nom du fichier à envoyer
+        filename: basename(imageFile.path), // le nom du fichier à envoye
       ));
 
       // Envoyer la requête
@@ -111,39 +112,22 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       print('Set detector in mode: $mode');
 
       // uncomment next lines if you want to use the default model
-      final options = ObjectDetectorOptions(
+      final optionsImage = ObjectDetectorOptions(
           mode: mode,
           classifyObjects: true,
           multipleObjects: true);
-      _objectDetector = ObjectDetector(options: options);
+      _objectDetectorImage = ObjectDetector(options: optionsImage);
 
       // uncomment next lines if you want to use a local model
       // make sure to add tflite model to assets/ml
-      // const path = 'object_labeler.tflite';
-      // final modelPath = await _getModel(path);
-      // print(modelPath);
-      // final options = LocalObjectDetectorOptions(
-      //   mode: mode,
-      //   modelPath: modelPath,
-      //   classifyObjects: true,
-      //   multipleObjects: true,
-      // );
-      // _objectDetector = ObjectDetector(options: options);
-
-      // uncomment next lines if you want to use a remote model
-      // make sure to add model to firebase
-      // final modelName = 'bird-classifier';
-      // final response =
-      //     await FirebaseObjectDetectorModelManager().downloadModel(modelName);
-      // print('Downloaded: $response');
-      // final options = FirebaseObjectDetectorOptions(
-      //   mode: mode,
-      //   modelName: modelName,
-      //   classifyObjects: true,
-      //   multipleObjects: true,
-      // );
-      // _objectDetector = ObjectDetector(options: options);
-
+      final modelPath = await _getModel('assets/ml/object_labeler.tflite');
+      final options = LocalObjectDetectorOptions(
+        modelPath: modelPath,
+        classifyObjects: true,
+        multipleObjects: true,
+        mode: DetectionMode.stream,
+      );
+      _objectDetector = ObjectDetector(options: options);
       _canProcess = true;
     }
 
@@ -155,13 +139,16 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       setState(() {
         _text = '';
       });
-      final objects = await _objectDetector.processImage(inputImage);
+
       if (inputImage.metadata?.size != null &&
           inputImage.metadata?.rotation != null) {
+        final objects = await _objectDetector.processImage(inputImage);
         final painter = ObjectDetectorPainter(
             objects, inputImage.metadata!.rotation, inputImage.metadata!.size);
         _customPaint = CustomPaint(painter: painter);
       } else {
+
+        final objects = await _objectDetectorImage.processImage(inputImage);
         // Create a File object with the picture
         String? path = inputImage.filePath;
         final file = io.File(path!);
@@ -169,6 +156,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         // Get the size of the image
         final double? width = image?.width.toDouble();
         final double? height = image?.height.toDouble();
+        print(Size(width!, height!));
 
         // Add rect on objects detected.
         final painter = ObjectDetectorPainter(
@@ -176,10 +164,8 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         _customPaint = CustomPaint(painter: painter);
 
         // String text = 'Objects found: ${objects.length}\n\n';
-        for (final object in objects) {
-          _text = 'Object:  trackingId: ${object.trackingId} - ${object.labels.map((e) => e.text)}\n\n';
-        }
-        uploadImage(file);
+
+        //uploadImage(file);
 
       }
       _isBusy = false;
@@ -191,7 +177,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
     /// Récupère le modèle.
     Future<String> _getModel(String assetPath) async {
       if (io.Platform.isAndroid) {
-        return 'assets/$assetPath';
+        return 'flutter_assets/$assetPath';
       }
       final path = '${(await getApplicationSupportDirectory()).path}/$assetPath';
       await io.Directory(dirname(path)).create(recursive: true);
