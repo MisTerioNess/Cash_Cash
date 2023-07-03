@@ -156,6 +156,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         _text = '';
       });
       final objects = await _objectDetector.processImage(inputImage);
+
       if (inputImage.metadata?.size != null &&
           inputImage.metadata?.rotation != null) {
         final painter = ObjectDetectorPainter(
@@ -169,7 +170,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         // Get the size of the image
         final double? width = image?.width.toDouble();
         final double? height = image?.height.toDouble();
-
+        print(objects);
         // Add rect on objects detected.
         final painter = ObjectDetectorPainter(
             objects, InputImageRotation.rotation0deg, Size(width!, height!));
@@ -177,7 +178,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
 
         // String text = 'Objects found: ${objects.length}\n\n';
         for (final object in objects) {
-          uploadImage(file);
+          //uploadImage(file);
           // print(object.boundingBox);
           // print("INFOS DU RECTANGLE");
           // print(object.boundingBox.size.width);

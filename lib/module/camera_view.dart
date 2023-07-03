@@ -51,6 +51,7 @@ class _CameraViewState extends State<CameraView> {
   double zoomLevel = 0.0, minZoomLevel = 0.0, maxZoomLevel = 0.0;
   final bool _allowPicker = true;
   bool _changingCameraLens = false;
+  bool _showDashboard = false;
 
   void resetCustomPaint() {
     // réinitialiser les bordures vertes du détecteur
@@ -101,47 +102,11 @@ class _CameraViewState extends State<CameraView> {
   /// Met à jour un widget.
   @override
   Widget build(BuildContext context) {
-    if(_imageFile != null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-        ),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.file(
-              File(_imageFile!.path),
-              fit: BoxFit.cover,
-            ),
-            Positioned.fill(
-              child: Container(
-                width: double.infinity,
-                height: double.infinity,
-                child: widget.customPaint
-              ),
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _retry,
-                      child: Text('Réessayer'),
-                    ),
-                    SizedBox(width: 16.0),
-                    ElevatedButton(
-                      onPressed: _confirm,
-                      child: Text('OK'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
+    if(_showDashboard == true) {
+      return _dashboard();
+    } else if(_imageFile != null) {
+      return _pictureBody();
+      // affiche l'image ainsi qu'un formulaire pour valider ou reprendre la photo prise
     } else {
       return Scaffold(
         appBar: AppBar(
@@ -197,8 +162,19 @@ class _CameraViewState extends State<CameraView> {
     });
   }
   /// valide la prise de la photo
-  void _confirm() {
-    print('OK'); // TODO: rediriger l'image vers le dashboard
+  void _confirm() async {
+    await _stopLiveFeed();
+    setState(() {
+      _showDashboard = true;
+    });
+    print('OK SIRI'); // TODO: rediriger l'image vers le dashboard
+  }
+  /// depuis le dashboard, repartir dans la galerie
+  void _returnToGallery() {
+    setState(() {
+      _showDashboard = false;
+      _imageFile = null;
+    });
   }
 
   /// Met à jour un widget.
@@ -235,6 +211,49 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
+  Widget _pictureBody() {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.file(
+            File(_imageFile!.path),
+            fit: BoxFit.cover,
+          ),
+          Positioned.fill(
+            child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                child: widget.customPaint
+            ),
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: _retry,
+                    child: Text('Réessayer'),
+                  ),
+                  SizedBox(width: 16.0),
+                  ElevatedButton(
+                    onPressed: _confirm,
+                    child: Text('Valider'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Met à jour un widget.
   Widget _body() {
     Widget body;
@@ -247,7 +266,7 @@ class _CameraViewState extends State<CameraView> {
     return body;
   }
 
-  /// Met à jour un widget.
+  /// Affiche la preview de la caméra
   Widget _liveFeedBody() {
     if (_controller?.value.isInitialized == false) {
       return Container();
@@ -303,7 +322,7 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
-  /// Met à jour un widget.
+  /// Affiche la galerie
   Widget _galleryBody() {
     return ListView(shrinkWrap: true, children: [
       _image != null
@@ -325,17 +344,18 @@ class _CameraViewState extends State<CameraView> {
       Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
         child: ElevatedButton(
-          child: Text('From Gallery'),
+          child: Text('Image depuis la galerie'),
           onPressed: () => _getImage(ImageSource.gallery),
         ),
       ),
       Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
         child: ElevatedButton(
-          child: Text('Take a picture'),
+          child: Text('Prendre une photo'),
           onPressed: () => _getImage(ImageSource.camera),
         ),
       ),
+      // TODO: mettre l'historisation du dashboard ou l'afficher en dessous de ces boutons
       if (_image != null)
         Padding(
           padding: const EdgeInsets.all(16.0),
@@ -343,6 +363,83 @@ class _CameraViewState extends State<CameraView> {
               '${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
         ),
     ]);
+  }
+
+  /// Affiche le tableau de bord
+  Widget _dashboard() {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          if (_allowPicker)
+            Padding(
+              padding: EdgeInsets.only(right: 20.0),
+              child: GestureDetector(
+                onTap: () {
+                  _mode = ScreenMode.gallery;
+                  _galleryBody();
+                  _returnToGallery();
+                  print("tap");
+                },
+                child: Icon(Icons.view_cozy_outlined, opticalSize: 48),
+              ),
+            ),
+        ],
+      ),
+      body: SingleChildScrollView( // Ajout du SingleChildScrollView
+        child: Column(
+          children: [
+            SizedBox(
+              height: 400,
+              width: 400,
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  Image.file(
+                    File(_imageFile!.path),
+                    fit: BoxFit.cover,
+                  ),
+                  if (widget.customPaint != null) widget.customPaint!,
+                ],
+              ),
+            ),
+            Card(
+              child: ListTile(
+                leading: Image(
+                  image: AssetImage('assets/cash_bill.png'),
+                  width: 50, // Largeur souhaitée
+                  height: 50, // Hauteur souhaitée
+                  fit: BoxFit.contain, // Contrôle le mode d'ajustement de l'image
+                ),
+                title: Text('Montant total: '),
+              ),
+            ),
+            Text("Détails"),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.payments_outlined, size: 36),
+                title: Text('Montant des billets: '),
+                subtitle: Text('Nombre de billets: '),
+              ),
+            ),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.paid_outlined, size: 36),
+                title: Text('Montant des pièces: '),
+                subtitle: Text('Nombre de pièces: '),
+              ),
+            ),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.request_quote_outlined, size: 36),
+                title: Text("Montant des chèques: "),
+                subtitle: Text("Nombre de chèques")
+              )
+            )
+          ],
+        ),
+      ),
+    );
   }
 
   Future _getImage(ImageSource source) async {
