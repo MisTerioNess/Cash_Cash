@@ -30,14 +30,14 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
 
     void uploadImage(io.File imageFile) async {
       // L'URL de votre endpoint de téléchargement
-      var uri = Uri.parse('http://149.202.49.224:49153/image');
+      var uri = Uri.parse('http://149.202.49.224:8000/upload_image');
 
       // Créer une requête multipart
       var request = http.MultipartRequest('POST', uri);
 
       // Ajouter le fichier à la requête
       request.files.add(await http.MultipartFile.fromPath(
-        'file', // le nom du paramètre POST pour le fichier
+        'image', // le nom du paramètre POST pour le fichier
         imageFile.path,
         filename: basename(imageFile.path), // le nom du fichier à envoyer
       ));
@@ -208,7 +208,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
 
           _text = 'Object:  trackingId: ${object.trackingId} - ${object.labels.map((e) => e.text)}\n\n';
         }
-        // _text = text;
+        uploadImage(file);
 
       }
       _isBusy = false;

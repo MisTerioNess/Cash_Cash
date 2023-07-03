@@ -48,10 +48,13 @@ class _CameraViewState extends State<CameraView> {
   String? _path;
   ImagePicker? _imagePicker;
   int _cameraIndex = -1;
-  double zoomLevel = 0.0, minZoomLevel = 0.0, maxZoomLevel = 0.0;
+  double zoomLevel = 1.0, minZoomLevel = 1.0, maxZoomLevel = 10.0;
   final bool _allowPicker = true;
   bool _changingCameraLens = false;
   bool _showDashboard = false;
+  double _scaleFactor = 1.0;
+  double _baseScaleFactor = 1.0;
+
 
   void resetCustomPaint() {
     // réinitialiser les bordures vertes du détecteur
@@ -110,7 +113,18 @@ class _CameraViewState extends State<CameraView> {
     } else {
       return Scaffold(
         appBar: AppBar(
-          title: Text(widget.title),
+          backgroundColor: Color.fromARGB(255, 247,115,127),
+          title: Row(
+            children: [
+              Image.asset(
+                'assets/cc_icon.png',
+                width: 24.0,
+                height: 24.0,
+              ),
+              SizedBox(width: 8.0), // Espacement entre l'icône et le titre
+              Text(widget.title),
+            ],
+          ),
           actions: [
             if (_allowPicker)
               Padding(
@@ -119,7 +133,7 @@ class _CameraViewState extends State<CameraView> {
                   onTap: _switchScreenMode,
                   child: Icon(
                     _mode == ScreenMode.liveFeed
-                        ? Icons.photo_library_outlined
+                        ? Icons.image_outlined
                         : (Platform.isIOS
                         ? Icons.camera_alt_outlined
                         : Icons.camera),
@@ -135,6 +149,7 @@ class _CameraViewState extends State<CameraView> {
     }
   }
 
+
   /// prendre une photo de la caméra
   Future<void> _takePhoto() async {
     if (_controller?.value.isInitialized == false) {
@@ -143,6 +158,7 @@ class _CameraViewState extends State<CameraView> {
 
     try {
       await _controller?.initialize();
+      _controller?.setZoomLevel(zoomLevel);
       final imageFile = await _controller?.takePicture();
 
       setState(() {
@@ -152,6 +168,7 @@ class _CameraViewState extends State<CameraView> {
       print('Error taking picture: $e');
     }
   }
+
   /// annule la prise de la photo et retourne sur la preview de la caméra
   void _retry() {
     setState(() async {
@@ -183,27 +200,29 @@ class _CameraViewState extends State<CameraView> {
     if (cameras.length == 1) return null;
 
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center, // Centre les boutons dans la Row
       children: [
-        SizedBox(width: 150.0), // espacement pour mettre les boutons au centre
         SizedBox(
           height: 60.0,
           width: 60.0,
           child: FloatingActionButton(
+            backgroundColor: Color.fromARGB(255, 252,183,94),
             onPressed: _takePhoto,
             child: Icon(Icons.camera, size: 40),
           ),
         ),
         SizedBox(width: 50.0), // Espacement entre les boutons
         SizedBox(
-          height: 50.0,
-          width: 50.0,
+          height: 60.0, // Taille du bouton modifiée pour correspondre au premier bouton
+          width: 60.0, // Taille du bouton modifiée pour correspondre au premier bouton
           child: FloatingActionButton(
+            backgroundColor: Color.fromARGB(255, 130,71,207),
             onPressed: _switchLiveCamera,
             child: Icon(
-              Platform.isIOS
-                  ? Icons.flip_camera_ios_outlined
-                  : Icons.flip_camera_android_outlined,
-              size: 30
+                Platform.isIOS
+                    ? Icons.flip_camera_ios_outlined
+                    : Icons.flip_camera_android_outlined,
+                size: 40 // Taille de l'icône modifiée pour correspondre à la première icône
             ),
           ),
         ),
@@ -214,7 +233,18 @@ class _CameraViewState extends State<CameraView> {
   Widget _pictureBody() {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        backgroundColor: Color.fromARGB(255, 247,115,127),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/cc_icon.png',
+              width: 24.0,
+              height: 24.0,
+            ),
+            SizedBox(width: 8.0), // Espacement entre l'icône et le titre
+            Text(widget.title),
+          ],
+        ),
       ),
       body: Stack(
         fit: StackFit.expand,
@@ -268,56 +298,36 @@ class _CameraViewState extends State<CameraView> {
 
   /// Affiche la preview de la caméra
   Widget _liveFeedBody() {
-    if (_controller?.value.isInitialized == false) {
+    if (!_controller!.value.isInitialized) {
       return Container();
     }
 
     final size = MediaQuery.of(context).size;
-    // calculate scale depending on screen and camera ratios
-    // this is actually size.aspectRatio / (1 / camera.aspectRatio)
-    // because camera preview size is received as landscape
-    // but we're calculating for portrait orientation
     var scale = size.aspectRatio * _controller!.value.aspectRatio;
 
-    // to prevent scaling down, invert the value
     if (scale < 1) scale = 1 / scale;
 
     return Container(
       color: Colors.black,
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          Transform.scale(
-            scale: scale,
-            child: Center(
-              child: _changingCameraLens
-                  ? Center(
-                child: const Text('Changing camera lens'),
-              )
-                  : CameraPreview(_controller!),
-            ),
-          ),
-          if (widget.customPaint != null) widget.customPaint!,
-          Positioned(
-            bottom: 100,
-            left: 50,
-            right: 50,
-            child: Slider(
-              value: zoomLevel,
-              min: minZoomLevel,
-              max: maxZoomLevel,
-              onChanged: (newSliderValue) {
-                setState(() {
-                  zoomLevel = newSliderValue;
-                  _controller!.setZoomLevel(zoomLevel);
-                });
-              },
-              divisions: (maxZoomLevel - 1).toInt() < 1
-                  ? null
-                  : (maxZoomLevel - 1).toInt(),
-            ),
-          )
-        ],
+      child: GestureDetector(
+        onScaleStart: (details) {
+          _baseScaleFactor = zoomLevel;
+        },
+        onScaleUpdate: (details) {
+          setState(() {
+            zoomLevel = _baseScaleFactor * details.scale;
+            zoomLevel = zoomLevel.clamp(minZoomLevel, maxZoomLevel);
+
+            _controller!.setZoomLevel(zoomLevel);
+          });
+        },
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            CameraPreview(_controller!),
+            if (widget.customPaint != null) widget.customPaint!,
+          ],
+        ),
       ),
     );
   }
@@ -338,8 +348,8 @@ class _CameraViewState extends State<CameraView> {
         ),
       )
           : Icon(
-        Icons.image,
-        size: 200,
+        Icons.euro,
+        size: 250,
       ),
       Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
@@ -369,7 +379,18 @@ class _CameraViewState extends State<CameraView> {
   Widget _dashboard() {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        backgroundColor: Color.fromARGB(255, 247,115,127),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/cc_icon.png',
+              width: 24.0,
+              height: 24.0,
+            ),
+            SizedBox(width: 8.0), // Espacement entre l'icône et le titre
+            Text(widget.title),
+          ],
+        ),
         actions: [
           if (_allowPicker)
             Padding(
