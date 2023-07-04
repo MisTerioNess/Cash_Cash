@@ -1,11 +1,16 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
-import 'package:cash_cash/module/object_detector.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 
 import 'package:image_picker/image_picker.dart';
+
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
+
+import 'package:graphic/graphic.dart';
 
 import '../main.dart';
 
@@ -34,13 +39,12 @@ class CameraView extends StatefulWidget {
   final Function(ScreenMode mode)? onScreenModeChanged;
   final CameraLensDirection initialDirection;
 
-
   @override
   State<CameraView> createState() => _CameraViewState();
 }
 
 /// Mise à jour de la vue avec la caméra.
-class _CameraViewState extends State<CameraView> {
+class _CameraViewState extends State<CameraView> with SingleTickerProviderStateMixin {
   ScreenMode _mode = ScreenMode.liveFeed;
   CameraController? _controller;
   File? _image;
@@ -51,8 +55,79 @@ class _CameraViewState extends State<CameraView> {
   double zoomLevel = 1.0, minZoomLevel = 1.0, maxZoomLevel = 10.0;
   final bool _allowPicker = true;
   bool _changingCameraLens = false;
+  bool _showDashboard = false;
   double _scaleFactor = 1.0;
   double _baseScaleFactor = 1.0;
+  late final AnimationController _animationController;
+  late final Animation<double> _animation;
+  bool _isProcess = false;
+
+  late String total;
+  late String total_banknotes;
+  late String count_banknotes;
+  late Map<String, dynamic> banknotes;
+  late String total_coins;
+  late String count_coins;
+  late Map<String, dynamic> coins;
+  late String total_cheques;
+  late String count_cheques;
+  List<Map<String, dynamic>> dataChart = [];
+
+  void uploadImage(File imageFile) async {
+    // L'URL de votre endpoint de téléchargement
+    var uri = Uri.parse('http://149.202.49.224:8000/upload_image');
+
+    // Créer une requête multipart
+    var request = http.MultipartRequest('POST', uri);
+
+    // Ajouter le fichier à la requête
+    request.files.add(await http.MultipartFile.fromPath(
+      'image', // le nom du paramètre POST pour le fichier
+      imageFile.path,
+      filename: path.basename(imageFile.path), // le nom du fichier à envoyer
+    ));
+
+    // Envoyer la requête
+    var response = await request.send();
+    var responseBody = await response.stream.transform(utf8.decoder).join();
+    print(responseBody);
+    var responseBodyDict = jsonDecode(responseBody);
+    total = responseBodyDict['total'];
+    total_banknotes = responseBodyDict['total_banknotes'];
+    count_banknotes = responseBodyDict['count_banknotes'];
+    banknotes = Map<String, dynamic>.from(responseBodyDict['all_banknotes']);
+    total_coins = responseBodyDict['total_coins'];
+    count_coins = responseBodyDict['count_coins'];
+    coins = Map<String, dynamic>.from(responseBodyDict['all_coins']);
+    total_cheques = responseBodyDict['total_cheques'];
+    count_cheques = responseBodyDict['count_cheques'];
+
+    for (var entry in coins.entries) {
+      if(entry.value != 0) {
+        Map<String, dynamic> entries = new Map<String, dynamic>();
+        entries['genre'] = entry.key;
+        entries['sold'] = entry.value;
+        dataChart.add(entries);
+      }
+    }
+    for (var entry in banknotes.entries) {
+      if(entry.value != 0) {
+        Map<String, dynamic> entries = new Map<String, dynamic>();
+        entries['genre'] = entry.key;
+        entries['sold'] = entry.value;
+        dataChart.add(entries);
+      }
+    }
+
+    // Vérifier la réponse
+    if (response.statusCode == 200) {
+      _isProcess = false;
+      print('Upload successful');
+      setState(() {});
+    } else {
+      print('Upload failed with status: ${response.statusCode}');
+    }
+  }
 
   void resetCustomPaint() {
     // réinitialiser les bordures vertes du détecteur
@@ -64,6 +139,12 @@ class _CameraViewState extends State<CameraView> {
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 0, end: 8).animate(_animationController);
 
     _imagePicker = ImagePicker();
 
@@ -103,58 +184,11 @@ class _CameraViewState extends State<CameraView> {
   /// Met à jour un widget.
   @override
   Widget build(BuildContext context) {
-    if (_imageFile != null) {
-      return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Color.fromARGB(255, 247,115,127),
-          title: Row(
-            children: [
-              Image.asset(
-                'assets/cc_icon.png',
-                width: 24.0,
-                height: 24.0,
-              ),
-              SizedBox(width: 8.0), // Espacement entre l'icône et le titre
-              Text(widget.title),
-            ],
-          ),
-        ),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.file(
-              File(_imageFile!.path),
-              fit: BoxFit.cover,
-            ),
-            Positioned.fill(
-              child: Container(
-                width: double.infinity,
-                height: double.infinity,
-                child: widget.customPaint,
-              ),
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _retry,
-                      child: Text('Réessayer'),
-                    ),
-                    SizedBox(width: 16.0),
-                    ElevatedButton(
-                      onPressed: _confirm,
-                      child: Text('OK'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
+    if(_showDashboard == true) {
+      return _dashboard();
+    } else if(_imageFile != null) {
+      return _pictureBody();
+      // affiche l'image ainsi qu'un formulaire pour valider ou reprendre la photo prise
     } else {
       return Scaffold(
         appBar: AppBar(
@@ -203,8 +237,8 @@ class _CameraViewState extends State<CameraView> {
 
     try {
       await _controller?.initialize();
-      _controller?.setZoomLevel(zoomLevel);
-      final imageFile = await _controller?.takePicture();
+      _controller!.setZoomLevel(zoomLevel);
+      final imageFile = await _controller!.takePicture();
 
       setState(() {
         _imageFile = imageFile;
@@ -216,16 +250,35 @@ class _CameraViewState extends State<CameraView> {
 
   /// annule la prise de la photo et retourne sur la preview de la caméra
   void _retry() {
-    setState(() async {
-      await _stopLiveFeed();
-      _imageFile = null;
-      resetCustomPaint();
-      await _startLiveFeed();
-    });
+    if(_mode == ScreenMode.gallery) {
+      _returnToGallery();
+    } else {
+      setState(() async {
+        await _stopLiveFeed();
+        _imageFile = null;
+        resetCustomPaint();
+        await _startLiveFeed();
+      });
+    }
   }
   /// valide la prise de la photo
-  void _confirm() {
-    print('OK'); // TODO: rediriger l'image vers le dashboard
+  void _confirm() async {
+    await _stopLiveFeed();
+    setState(() {
+      _showDashboard = true;
+    });
+    final path = _imageFile?.path;
+    _isProcess = true;
+    uploadImage(File(path!));
+  }
+
+  /// depuis le dashboard, repartir dans la galerie
+  void _returnToGallery() {
+    setState(() {
+      _showDashboard = false;
+      dataChart = [];
+      _imageFile = null;
+    });
   }
 
   /// Met à jour un widget.
@@ -264,6 +317,59 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
+  Widget _pictureBody() {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Color.fromARGB(255, 247,115,127),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/cc_icon.png',
+              width: 24.0,
+              height: 24.0,
+            ),
+            SizedBox(width: 8.0), // Espacement entre l'icône et le titre
+            Text(widget.title),
+          ],
+        ),
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.file(
+            File(_imageFile!.path),
+            fit: BoxFit.cover,
+          ),
+          Positioned.fill(
+            child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                child: widget.customPaint
+            ),
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: _retry,
+                    child: Text('Réessayer'),
+                  ),
+                  SizedBox(width: 16.0),
+                  ElevatedButton(
+                    onPressed: _confirm,
+                    child: Text('Valider'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Met à jour un widget.
   Widget _body() {
@@ -277,7 +383,7 @@ class _CameraViewState extends State<CameraView> {
     return body;
   }
 
-  /// Met à jour un widget.
+  /// Affiche la preview de la caméra
   Widget _liveFeedBody() {
     if (!_controller!.value.isInitialized) {
       return Container();
@@ -313,10 +419,38 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
-  /// Met à jour un widget.
+  /// Affiche la galerie
   Widget _galleryBody() {
     return ListView(shrinkWrap: true, children: [
-      _image != null
+      _imageFile != null ?
+        _dashboard()
+        :
+        Icon(
+          Icons.euro,
+          size: 250,
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: ElevatedButton(
+            child: Text('Image depuis la galerie'),
+            onPressed: () => _getImage(ImageSource.gallery),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: ElevatedButton(
+            child: Text('Prendre une photo'),
+            onPressed: () => _switchScreenMode(),
+          ),
+        ),
+        /*// TODO: mettre l'historisation du dashboard ou l'afficher en dessous de ces boutons
+        if (_image != null)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+                '${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
+          ),*/
+      /*_image != null
           ? SizedBox(
         height: 400,
         width: 400,
@@ -327,46 +461,163 @@ class _CameraViewState extends State<CameraView> {
             if (widget.customPaint != null) widget.customPaint!,
           ],
         ),
-      )
-          : Icon(
-        Icons.euro,
-        size: 250,
-      ),
-      Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            primary: Color.fromARGB(255, 252,183,94), // Couleur de l'arrière-plan du bouton
-            onPrimary: Colors.white, // Couleur du texte du bouton
-          ),
-          child: Text('From Gallery'),
-          onPressed: () => _getImage(ImageSource.gallery),
-        ),
-      ),
-      Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            primary: Color.fromARGB(255, 130,71,207), // Couleur de l'arrière-plan du bouton
-            onPrimary: Colors.white, // Couleur du texte du bouton
-          ),
-          child: Text('Take a picture'),
-          onPressed: () => _getImage(ImageSource.camera),
-        ),
-      ),
-      if (_image != null)
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-              '${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
-        ),
+      )*/
+
     ]);
   }
 
+  /// Affiche le tableau de bord
+  Widget _dashboard() {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Color.fromARGB(255, 247,115,127),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/cc_icon.png',
+              width: 24.0,
+              height: 24.0,
+            ),
+            SizedBox(width: 8.0), // Espacement entre l'icône et le titre
+            Text(widget.title),
+          ],
+        ),
+        actions: [
+          if (_allowPicker)
+            Padding(
+              padding: EdgeInsets.only(right: 20.0),
+              child: GestureDetector(
+                onTap: () {
+                  _mode = ScreenMode.gallery;
+                  _galleryBody();
+                  _returnToGallery();
+                  print("tap");
+                },
+                child: Icon(Icons.view_cozy_outlined, opticalSize: 48),
+              ),
+            ),
+        ],
+      ),
+      body: SingleChildScrollView( // Ajout du SingleChildScrollView
+        child: Column(
+          children: [
+            SizedBox(
+              height: 550,
+              width: 400,
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  Image.file(
+                    File(_imageFile!.path),
+                    fit: BoxFit.cover,
+                  ),
+                  if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement et le filtre blanc
+                    Container(
+                      color: Colors.white.withOpacity(0.5), // Couleur blanche avec opacité de 10%
+                    ),
+                  if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement
+                    Center(
+                      child: CircularProgressIndicator(),
+                    ), // Si isProcessing est true, affichez le spinner de chargement
+                  if(_isProcess == false) Align(
+                    alignment: Alignment.bottomCenter,
+                    child: AnimatedBuilder(
+                      animation: _animation,
+                      builder: (BuildContext context, Widget? child) {
+                        return Transform.translate(
+                          offset: Offset(0, -_animation.value),
+                          child: child,
+                        );
+                      },
+                      child: Icon(Icons.arrow_downward, // Icône animé
+                          color: Color.fromARGB(255, 247,115,127),
+                          size: 50.0),
+                    ),
+                  ),
+                  if (widget.customPaint != null) widget.customPaint!,
+                ],
+              ),
+            ),
+            if(_isProcess == false) Card(
+              child: ListTile(
+                leading: Image(
+                  image: AssetImage('assets/cash_bill.png'),
+                  width: 50, // Largeur souhaitée
+                  height: 50, // Hauteur souhaitée
+                  fit: BoxFit.contain, // Contrôle le mode d'ajustement de l'image
+                ),
+                title: Text("Montant total: ${total.isNotEmpty ? total : 'N/A'}"),
+              ),
+            ),
+            if(_isProcess== false) Text("Détails"),
+            if(_isProcess == false) Card(
+              child: ListTile(
+                leading: Icon(Icons.payments_outlined, size: 36),
+                title: Text("Montant des billets: ${total_banknotes.isNotEmpty ? '${total_banknotes}€' : 'N/A'}"),
+                subtitle: Text("Nombre de billets: ${count_banknotes.isNotEmpty ? count_banknotes : 'N/A'}"),
+              ),
+            ),
+            if(_isProcess == false) Card(
+              child: ListTile(
+                leading: Icon(Icons.paid_outlined, size: 36),
+                title: Text("Montant des pièces: ${total_coins.isNotEmpty ? '${total_coins}€' : 'N/A'}"),
+                subtitle: Text("Nombre de pièces: ${count_coins.isNotEmpty ? count_coins : 'N/A'}"),
+              ),
+            ),
+            if(_isProcess == false) Card(
+                child: ListTile(
+                    leading: Icon(Icons.request_quote_outlined, size: 36),
+                    title: Text("Montant des chèques: ${total_cheques.isNotEmpty ? '${total_cheques}€' : 'N/A'}"),
+                    subtitle: Text("Nombre de chèques: ${count_cheques.isNotEmpty ? total_cheques : 'N/A'}")
+                )
+            ),
+            if(_isProcess == false) Container(
+              margin: const EdgeInsets.only(top: 10),
+              width: 350,
+              height: 300,
+              child: Chart(
+                data: dataChart,
+                variables: {
+                  'genre': Variable(
+                    accessor: (Map map) => map['genre'] as String
+                  ),
+                  'sold': Variable(
+                    accessor: (Map map) => map['sold'] as num
+                  ),
+                },
+                transforms: [
+                  Proportion( // faire une somme des montants
+                    variable: 'sold',
+                    as: 'percent',
+                  )
+                ],
+                marks: [
+                  IntervalMark(
+                    position: Varset('percent') / Varset('genre'),
+                    label: LabelEncode(
+                      encoder: (tuple) => Label(
+                        "qte: ${tuple['sold'].toString()}\n"
+                            "${tuple['genre'].toString()}",
+                        LabelStyle(textStyle: Defaults.runeStyle),
+                      ),
+                    ),
+                    color: ColorEncode(
+                        variable: 'genre', values: Defaults.colors10),
+                    modifiers: [StackModifier()],
+                  )
+                ],
+                coord: PolarCoord(transposed: true, dimCount: 1),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future _getImage(ImageSource source) async {
     setState(() {
-      _image = null;
+      _imageFile = null;
       _path = null;
     });
 
@@ -380,7 +631,7 @@ class _CameraViewState extends State<CameraView> {
 
   /// Change le mode de la caméra
   void _switchScreenMode() {
-    _image = null;
+    _imageFile = null;
 
     if (_mode == ScreenMode.liveFeed) {
       _mode = ScreenMode.gallery;
@@ -451,7 +702,7 @@ class _CameraViewState extends State<CameraView> {
       return;
     }
     setState(() {
-      _image = File(path);
+      _imageFile = XFile(File(path).path);
     });
     _path = path;
     final inputImage = InputImage.fromFilePath(path);
