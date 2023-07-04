@@ -6,8 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 
 import 'package:image_picker/image_picker.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
+
+import 'package:graphic/graphic.dart';
 
 import '../main.dart';
 
@@ -58,13 +61,17 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   late final AnimationController _animationController;
   late final Animation<double> _animation;
   bool _isProcess = false;
+
   late String total;
   late String total_banknotes;
   late String count_banknotes;
+  late Map<String, dynamic> banknotes;
   late String total_coins;
   late String count_coins;
+  late Map<String, dynamic> coins;
   late String total_cheques;
   late String count_cheques;
+  List<Map<String, dynamic>> dataChart = [];
 
   void uploadImage(File imageFile) async {
     // L'URL de votre endpoint de téléchargement
@@ -88,10 +95,29 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     total = responseBodyDict['total'];
     total_banknotes = responseBodyDict['total_banknotes'];
     count_banknotes = responseBodyDict['count_banknotes'];
+    banknotes = Map<String, dynamic>.from(responseBodyDict['all_banknotes']);
     total_coins = responseBodyDict['total_coins'];
     count_coins = responseBodyDict['count_coins'];
+    coins = Map<String, dynamic>.from(responseBodyDict['all_coins']);
     total_cheques = responseBodyDict['total_cheques'];
     count_cheques = responseBodyDict['count_cheques'];
+
+    for (var entry in coins.entries) {
+      if(entry.value != 0) {
+        Map<String, dynamic> entries = new Map<String, dynamic>();
+        entries['genre'] = entry.key;
+        entries['sold'] = entry.value;
+        dataChart.add(entries);
+      }
+    }
+    for (var entry in banknotes.entries) {
+      if(entry.value != 0) {
+        Map<String, dynamic> entries = new Map<String, dynamic>();
+        entries['genre'] = entry.key;
+        entries['sold'] = entry.value;
+        dataChart.add(entries);
+      }
+    }
 
     // Vérifier la réponse
     if (response.statusCode == 200) {
@@ -224,12 +250,16 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
 
   /// annule la prise de la photo et retourne sur la preview de la caméra
   void _retry() {
-    setState(() async {
-      await _stopLiveFeed();
-      _imageFile = null;
-      resetCustomPaint();
-      await _startLiveFeed();
-    });
+    if(_mode == ScreenMode.gallery) {
+      _returnToGallery();
+    } else {
+      setState(() async {
+        await _stopLiveFeed();
+        _imageFile = null;
+        resetCustomPaint();
+        await _startLiveFeed();
+      });
+    }
   }
   /// valide la prise de la photo
   void _confirm() async {
@@ -246,6 +276,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   void _returnToGallery() {
     setState(() {
       _showDashboard = false;
+      dataChart = [];
       _imageFile = null;
     });
   }
@@ -391,7 +422,35 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   /// Affiche la galerie
   Widget _galleryBody() {
     return ListView(shrinkWrap: true, children: [
-      _image != null
+      _imageFile != null ?
+        _dashboard()
+        :
+        Icon(
+          Icons.euro,
+          size: 250,
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: ElevatedButton(
+            child: Text('Image depuis la galerie'),
+            onPressed: () => _getImage(ImageSource.gallery),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: ElevatedButton(
+            child: Text('Prendre une photo'),
+            onPressed: () => _switchScreenMode(),
+          ),
+        ),
+        /*// TODO: mettre l'historisation du dashboard ou l'afficher en dessous de ces boutons
+        if (_image != null)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+                '${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
+          ),*/
+      /*_image != null
           ? SizedBox(
         height: 400,
         width: 400,
@@ -402,32 +461,8 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
             if (widget.customPaint != null) widget.customPaint!,
           ],
         ),
-      )
-          : Icon(
-        Icons.euro,
-        size: 250,
-      ),
-      Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: ElevatedButton(
-          child: Text('Image depuis la galerie'),
-          onPressed: () => _getImage(ImageSource.gallery),
-        ),
-      ),
-      Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: ElevatedButton(
-          child: Text('Prendre une photo'),
-          onPressed: () => _getImage(ImageSource.camera),
-        ),
-      ),
-      // TODO: mettre l'historisation du dashboard ou l'afficher en dessous de ces boutons
-      if (_image != null)
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-              '${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
-        ),
+      )*/
+
     ]);
   }
 
@@ -518,24 +553,62 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.payments_outlined, size: 36),
-                title: Text("Montant des billets: ${total_banknotes.isNotEmpty ? total_banknotes : 'N/A'}"),
+                title: Text("Montant des billets: ${total_banknotes.isNotEmpty ? '${total_banknotes}€' : 'N/A'}"),
                 subtitle: Text("Nombre de billets: ${count_banknotes.isNotEmpty ? count_banknotes : 'N/A'}"),
               ),
             ),
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.paid_outlined, size: 36),
-                title: Text("Montant des pièces: ${total_coins.isNotEmpty ? total_coins : 'N/A'}"),
+                title: Text("Montant des pièces: ${total_coins.isNotEmpty ? '${total_coins}€' : 'N/A'}"),
                 subtitle: Text("Nombre de pièces: ${count_coins.isNotEmpty ? count_coins : 'N/A'}"),
               ),
             ),
             if(_isProcess == false) Card(
                 child: ListTile(
                     leading: Icon(Icons.request_quote_outlined, size: 36),
-                    title: Text("Montant des chèques: ${total_cheques.isNotEmpty ? total_cheques : 'N/A'}"),
+                    title: Text("Montant des chèques: ${total_cheques.isNotEmpty ? '${total_cheques}€' : 'N/A'}"),
                     subtitle: Text("Nombre de chèques: ${count_cheques.isNotEmpty ? total_cheques : 'N/A'}")
                 )
-            )
+            ),
+            if(_isProcess == false) Container(
+              margin: const EdgeInsets.only(top: 10),
+              width: 350,
+              height: 300,
+              child: Chart(
+                data: dataChart,
+                variables: {
+                  'genre': Variable(
+                    accessor: (Map map) => map['genre'] as String
+                  ),
+                  'sold': Variable(
+                    accessor: (Map map) => map['sold'] as num
+                  ),
+                },
+                transforms: [
+                  Proportion( // faire une somme des montants
+                    variable: 'sold',
+                    as: 'percent',
+                  )
+                ],
+                marks: [
+                  IntervalMark(
+                    position: Varset('percent') / Varset('genre'),
+                    label: LabelEncode(
+                      encoder: (tuple) => Label(
+                        "qte: ${tuple['sold'].toString()}\n"
+                            "${tuple['genre'].toString()}",
+                        LabelStyle(textStyle: Defaults.runeStyle),
+                      ),
+                    ),
+                    color: ColorEncode(
+                        variable: 'genre', values: Defaults.colors10),
+                    modifiers: [StackModifier()],
+                  )
+                ],
+                coord: PolarCoord(transposed: true, dimCount: 1),
+              ),
+            ),
           ],
         ),
       ),
@@ -544,7 +617,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
 
   Future _getImage(ImageSource source) async {
     setState(() {
-      _image = null;
+      _imageFile = null;
       _path = null;
     });
 
@@ -558,7 +631,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
 
   /// Change le mode de la caméra
   void _switchScreenMode() {
-    _image = null;
+    _imageFile = null;
 
     if (_mode == ScreenMode.liveFeed) {
       _mode = ScreenMode.gallery;
@@ -629,7 +702,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
       return;
     }
     setState(() {
-      _image = File(path);
+      _imageFile = XFile(File(path).path);
     });
     _path = path;
     final inputImage = InputImage.fromFilePath(path);

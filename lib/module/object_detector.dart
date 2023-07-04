@@ -28,31 +28,6 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
   CustomPaint? _customPaint;
   String? _text;
 
-  void uploadImage(io.File imageFile) async {
-    // L'URL de votre endpoint de téléchargement
-    var uri = Uri.parse('http://149.202.49.224:8000/upload_image');
-
-    // Créer une requête multipart
-    var request = http.MultipartRequest('POST', uri);
-
-    // Ajouter le fichier à la requête
-    request.files.add(await http.MultipartFile.fromPath(
-      'image', // le nom du paramètre POST pour le fichier
-      imageFile.path,
-      filename: basename(imageFile.path), // le nom du fichier à envoye
-    ));
-
-    // Envoyer la requête
-    var response = await request.send();
-
-    // Vérifier la réponse
-    if (response.statusCode == 200) {
-      print('Upload successful');
-    } else {
-      print('Upload failed with status: ${response.statusCode}');
-    }
-  }
-
   /// Initialisation de l'état de base.
   @override
   void initState() {
@@ -146,7 +121,6 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
           objects, inputImage.metadata!.rotation, inputImage.metadata!.size);
       _customPaint = CustomPaint(painter: painter);
     } else {
-
       final objects = await _objectDetectorImage.processImage(inputImage);
       // Create a File object with the picture
       String? path = inputImage.filePath;
@@ -161,12 +135,8 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       final painter = ObjectDetectorPainter(
           objects, InputImageRotation.rotation0deg, Size(width!, height!));
       _customPaint = CustomPaint(painter: painter);
-
-      // String text = 'Objects found: ${objects.length}\n\n';
-
-      uploadImage(file);
-
     }
+
     _isBusy = false;
     if (mounted) {
       setState(() {});
