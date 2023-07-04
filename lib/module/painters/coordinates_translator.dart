@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:camera/camera.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 
 /// Effectue une translation de la coordonnée x en fonction de la rotation de l'image d'entrée et des dimensions spécifiées

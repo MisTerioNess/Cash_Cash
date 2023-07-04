@@ -4,6 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:cash_cash/module/object_detector.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import 'package:image_picker/image_picker.dart';
 
@@ -18,6 +19,7 @@ class CameraView extends StatefulWidget {
       {Key? key,
         required this.title,
         required this.customPaint,
+        required this.customPaintText,
         this.text,
         required this.onImage,
         required this.resetCustomPaint,
@@ -28,6 +30,7 @@ class CameraView extends StatefulWidget {
 
   final String title;
   final CustomPaint? customPaint;
+  final String? customPaintText;
   final String? text;
   final Function(InputImage inputImage) onImage;
   final Function(CustomPaint customPaint) resetCustomPaint;
@@ -40,7 +43,7 @@ class CameraView extends StatefulWidget {
 }
 
 /// Mise à jour de la vue avec la caméra.
-class _CameraViewState extends State<CameraView> {
+class _CameraViewState extends State<CameraView> with SingleTickerProviderStateMixin {
   ScreenMode _mode = ScreenMode.liveFeed;
   CameraController? _controller;
   File? _image;
@@ -51,8 +54,12 @@ class _CameraViewState extends State<CameraView> {
   double zoomLevel = 1.0, minZoomLevel = 1.0, maxZoomLevel = 10.0;
   final bool _allowPicker = true;
   bool _changingCameraLens = false;
+  bool _showDashboard = false;
   double _scaleFactor = 1.0;
   double _baseScaleFactor = 1.0;
+  late final AnimationController _animationController;
+  late final Animation<double> _animation;
+
 
   void resetCustomPaint() {
     // réinitialiser les bordures vertes du détecteur
@@ -64,6 +71,12 @@ class _CameraViewState extends State<CameraView> {
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 0, end: 8).animate(_animationController);
 
     _imagePicker = ImagePicker();
 
@@ -103,58 +116,11 @@ class _CameraViewState extends State<CameraView> {
   /// Met à jour un widget.
   @override
   Widget build(BuildContext context) {
-    if (_imageFile != null) {
-      return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Color.fromARGB(255, 247,115,127),
-          title: Row(
-            children: [
-              Image.asset(
-                'assets/cc_icon.png',
-                width: 24.0,
-                height: 24.0,
-              ),
-              SizedBox(width: 8.0), // Espacement entre l'icône et le titre
-              Text(widget.title),
-            ],
-          ),
-        ),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.file(
-              File(_imageFile!.path),
-              fit: BoxFit.cover,
-            ),
-            Positioned.fill(
-              child: Container(
-                width: double.infinity,
-                height: double.infinity,
-                child: widget.customPaint,
-              ),
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _retry,
-                      child: Text('Réessayer'),
-                    ),
-                    SizedBox(width: 16.0),
-                    ElevatedButton(
-                      onPressed: _confirm,
-                      child: Text('OK'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
+    if(_showDashboard == true) {
+      return _dashboard();
+    } else if(_imageFile != null) {
+      return _pictureBody();
+      // affiche l'image ainsi qu'un formulaire pour valider ou reprendre la photo prise
     } else {
       return Scaffold(
         appBar: AppBar(
@@ -224,8 +190,19 @@ class _CameraViewState extends State<CameraView> {
     });
   }
   /// valide la prise de la photo
-  void _confirm() {
-    print('OK'); // TODO: rediriger l'image vers le dashboard
+  void _confirm() async {
+    await _stopLiveFeed();
+    setState(() {
+      _showDashboard = true;
+    });
+    print('OK SIRI'); // TODO: rediriger l'image vers le dashboard
+  }
+  /// depuis le dashboard, repartir dans la galerie
+  void _returnToGallery() {
+    setState(() {
+      _showDashboard = false;
+      _imageFile = null;
+    });
   }
 
   /// Met à jour un widget.
@@ -264,6 +241,59 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
+  Widget _pictureBody() {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Color.fromARGB(255, 247,115,127),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/cc_icon.png',
+              width: 24.0,
+              height: 24.0,
+            ),
+            SizedBox(width: 8.0), // Espacement entre l'icône et le titre
+            Text(widget.title),
+          ],
+        ),
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.file(
+            File(_imageFile!.path),
+            fit: BoxFit.cover,
+          ),
+          Positioned.fill(
+            child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                child: widget.customPaint
+            ),
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: _retry,
+                    child: Text('Réessayer'),
+                  ),
+                  SizedBox(width: 16.0),
+                  ElevatedButton(
+                    onPressed: _confirm,
+                    child: Text('Valider'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Met à jour un widget.
   Widget _body() {
@@ -277,7 +307,7 @@ class _CameraViewState extends State<CameraView> {
     return body;
   }
 
-  /// Met à jour un widget.
+  /// Affiche la preview de la caméra
   Widget _liveFeedBody() {
     if (!_controller!.value.isInitialized) {
       return Container();
@@ -307,13 +337,14 @@ class _CameraViewState extends State<CameraView> {
           children: <Widget>[
             CameraPreview(_controller!),
             if (widget.customPaint != null) widget.customPaint!,
+            //if (widget.customPaintText != null) widget.customPaintText!,
           ],
         ),
       ),
     );
   }
 
-  /// Met à jour un widget.
+  /// Affiche la galerie
   Widget _galleryBody() {
     return ListView(shrinkWrap: true, children: [
       _image != null
@@ -335,34 +366,130 @@ class _CameraViewState extends State<CameraView> {
       Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
         child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            primary: Color.fromARGB(255, 252,183,94), // Couleur de l'arrière-plan du bouton
-            onPrimary: Colors.white, // Couleur du texte du bouton
-          ),
-          child: Text('From Gallery'),
+          child: Text('Image depuis la galerie'),
           onPressed: () => _getImage(ImageSource.gallery),
         ),
       ),
       Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
         child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            primary: Color.fromARGB(255, 130,71,207), // Couleur de l'arrière-plan du bouton
-            onPrimary: Colors.white, // Couleur du texte du bouton
-          ),
-          child: Text('Take a picture'),
+          child: Text('Prendre une photo'),
           onPressed: () => _getImage(ImageSource.camera),
         ),
       ),
+      // TODO: mettre l'historisation du dashboard ou l'afficher en dessous de ces boutons
       if (_image != null)
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
-              '${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
+              widget.customPaintText != null ? '${widget.customPaintText}': 'boude')
+              //'${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
         ),
     ]);
   }
 
+  /// Affiche le tableau de bord
+  Widget _dashboard() {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Color.fromARGB(255, 247,115,127),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/cc_icon.png',
+              width: 24.0,
+              height: 24.0,
+            ),
+            SizedBox(width: 8.0), // Espacement entre l'icône et le titre
+            Text(widget.title),
+          ],
+        ),
+        actions: [
+          if (_allowPicker)
+            Padding(
+              padding: EdgeInsets.only(right: 20.0),
+              child: GestureDetector(
+                onTap: () {
+                  _mode = ScreenMode.gallery;
+                  _galleryBody();
+                  _returnToGallery();
+                  print("tap");
+                },
+                child: Icon(Icons.view_cozy_outlined, opticalSize: 48),
+              ),
+            ),
+        ],
+      ),
+      body: SingleChildScrollView( // Ajout du SingleChildScrollView
+        child: Column(
+          children: [
+            SizedBox(
+              height: 550,
+              width: 400,
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  Image.file(
+                    File(_imageFile!.path),
+                    fit: BoxFit.cover,
+                  ),
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: AnimatedBuilder(
+                      animation: _animation,
+                      builder: (BuildContext context, Widget? child) {
+                        return Transform.translate(
+                          offset: Offset(0, -_animation.value),
+                          child: child,
+                        );
+                      },
+                      child: Icon(Icons.arrow_downward, // Icône animé
+                          color: Color.fromARGB(255, 247,115,127),
+                          size: 50.0),
+                    ),
+                  ),
+                  if (widget.customPaint != null) widget.customPaint!,
+                ],
+              ),
+            ),
+            Card(
+              child: ListTile(
+                leading: Image(
+                  image: AssetImage('assets/cash_bill.png'),
+                  width: 50, // Largeur souhaitée
+                  height: 50, // Hauteur souhaitée
+                  fit: BoxFit.contain, // Contrôle le mode d'ajustement de l'image
+                ),
+                title: Text('Montant total: '),
+              ),
+            ),
+            Text("Détails"),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.payments_outlined, size: 36),
+                title: Text('Montant des billets: '),
+                subtitle: Text('Nombre de billets: '),
+              ),
+            ),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.paid_outlined, size: 36),
+                title: Text('Montant des pièces: '),
+                subtitle: Text('Nombre de pièces: '),
+              ),
+            ),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.request_quote_outlined, size: 36),
+                title: Text("Montant des chèques: "),
+                subtitle: Text("Nombre de chèques: ")
+              )
+            )
+          ],
+        ),
+      ),
+    );
+  }
 
   Future _getImage(ImageSource source) async {
     setState(() {
