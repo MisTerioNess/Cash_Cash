@@ -1,11 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
-import 'package:cash_cash/module/object_detector.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
 
 import '../main.dart';
 
@@ -34,13 +36,12 @@ class CameraView extends StatefulWidget {
   final Function(ScreenMode mode)? onScreenModeChanged;
   final CameraLensDirection initialDirection;
 
-
   @override
   State<CameraView> createState() => _CameraViewState();
 }
 
 /// Mise à jour de la vue avec la caméra.
-class _CameraViewState extends State<CameraView> {
+class _CameraViewState extends State<CameraView> with SingleTickerProviderStateMixin {
   ScreenMode _mode = ScreenMode.liveFeed;
   CameraController? _controller;
   File? _image;
@@ -54,7 +55,53 @@ class _CameraViewState extends State<CameraView> {
   bool _showDashboard = false;
   double _scaleFactor = 1.0;
   double _baseScaleFactor = 1.0;
+  late final AnimationController _animationController;
+  late final Animation<double> _animation;
+  bool _isProcess = false;
+  late String total;
+  late String total_banknotes;
+  late String count_banknotes;
+  late String total_coins;
+  late String count_coins;
+  late String total_cheques;
+  late String count_cheques;
 
+  void uploadImage(File imageFile) async {
+    // L'URL de votre endpoint de téléchargement
+    var uri = Uri.parse('http://149.202.49.224:8000/upload_image');
+
+    // Créer une requête multipart
+    var request = http.MultipartRequest('POST', uri);
+
+    // Ajouter le fichier à la requête
+    request.files.add(await http.MultipartFile.fromPath(
+      'image', // le nom du paramètre POST pour le fichier
+      imageFile.path,
+      filename: path.basename(imageFile.path), // le nom du fichier à envoyer
+    ));
+
+    // Envoyer la requête
+    var response = await request.send();
+    var responseBody = await response.stream.transform(utf8.decoder).join();
+    print(responseBody);
+    var responseBodyDict = jsonDecode(responseBody);
+    total = responseBodyDict['total'];
+    total_banknotes = responseBodyDict['total_banknotes'];
+    count_banknotes = responseBodyDict['count_banknotes'];
+    total_coins = responseBodyDict['total_coins'];
+    count_coins = responseBodyDict['count_coins'];
+    total_cheques = responseBodyDict['total_cheques'];
+    count_cheques = responseBodyDict['count_cheques'];
+
+    // Vérifier la réponse
+    if (response.statusCode == 200) {
+      _isProcess = false;
+      print('Upload successful');
+      setState(() {});
+    } else {
+      print('Upload failed with status: ${response.statusCode}');
+    }
+  }
 
   void resetCustomPaint() {
     // réinitialiser les bordures vertes du détecteur
@@ -66,6 +113,12 @@ class _CameraViewState extends State<CameraView> {
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 0, end: 8).animate(_animationController);
 
     _imagePicker = ImagePicker();
 
@@ -158,8 +211,8 @@ class _CameraViewState extends State<CameraView> {
 
     try {
       await _controller?.initialize();
-      _controller?.setZoomLevel(zoomLevel);
-      final imageFile = await _controller?.takePicture();
+      _controller!.setZoomLevel(zoomLevel);
+      final imageFile = await _controller!.takePicture();
 
       setState(() {
         _imageFile = imageFile;
@@ -184,8 +237,11 @@ class _CameraViewState extends State<CameraView> {
     setState(() {
       _showDashboard = true;
     });
-    print('OK SIRI'); // TODO: rediriger l'image vers le dashboard
+    final path = _imageFile?.path;
+    _isProcess = true;
+    uploadImage(File(path!));
   }
+
   /// depuis le dashboard, repartir dans la galerie
   void _returnToGallery() {
     setState(() {
@@ -420,11 +476,34 @@ class _CameraViewState extends State<CameraView> {
                     File(_imageFile!.path),
                     fit: BoxFit.cover,
                   ),
+                  if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement et le filtre blanc
+                    Container(
+                      color: Colors.white.withOpacity(0.5), // Couleur blanche avec opacité de 10%
+                    ),
+                  if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement
+                    Center(
+                      child: CircularProgressIndicator(),
+                    ), // Si isProcessing est true, affichez le spinner de chargement
+                  if(_isProcess == false) Align(
+                    alignment: Alignment.bottomCenter,
+                    child: AnimatedBuilder(
+                      animation: _animation,
+                      builder: (BuildContext context, Widget? child) {
+                        return Transform.translate(
+                          offset: Offset(0, -_animation.value),
+                          child: child,
+                        );
+                      },
+                      child: Icon(Icons.arrow_downward, // Icône animé
+                          color: Color.fromARGB(255, 247,115,127),
+                          size: 50.0),
+                    ),
+                  ),
                   if (widget.customPaint != null) widget.customPaint!,
                 ],
               ),
             ),
-            Card(
+            if(_isProcess == false) Card(
               child: ListTile(
                 leading: Image(
                   image: AssetImage('assets/cash_bill.png'),
@@ -432,30 +511,30 @@ class _CameraViewState extends State<CameraView> {
                   height: 50, // Hauteur souhaitée
                   fit: BoxFit.contain, // Contrôle le mode d'ajustement de l'image
                 ),
-                title: Text('Montant total: '),
+                title: Text("Montant total: ${total.isNotEmpty ? total : 'N/A'}"),
               ),
             ),
-            Text("Détails"),
-            Card(
+            if(_isProcess== false) Text("Détails"),
+            if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.payments_outlined, size: 36),
-                title: Text('Montant des billets: '),
-                subtitle: Text('Nombre de billets: '),
+                title: Text("Montant des billets: ${total_banknotes.isNotEmpty ? total_banknotes : 'N/A'}"),
+                subtitle: Text("Nombre de billets: ${count_banknotes.isNotEmpty ? count_banknotes : 'N/A'}"),
               ),
             ),
-            Card(
+            if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.paid_outlined, size: 36),
-                title: Text('Montant des pièces: '),
-                subtitle: Text('Nombre de pièces: '),
+                title: Text("Montant des pièces: ${total_coins.isNotEmpty ? total_coins : 'N/A'}"),
+                subtitle: Text("Nombre de pièces: ${count_coins.isNotEmpty ? count_coins : 'N/A'}"),
               ),
             ),
-            Card(
-              child: ListTile(
-                leading: Icon(Icons.request_quote_outlined, size: 36),
-                title: Text("Montant des chèques: "),
-                subtitle: Text("Nombre de chèques: ")
-              )
+            if(_isProcess == false) Card(
+                child: ListTile(
+                    leading: Icon(Icons.request_quote_outlined, size: 36),
+                    title: Text("Montant des chèques: ${total_cheques.isNotEmpty ? total_cheques : 'N/A'}"),
+                    subtitle: Text("Nombre de chèques: ${count_cheques.isNotEmpty ? total_cheques : 'N/A'}")
+                )
             )
           ],
         ),

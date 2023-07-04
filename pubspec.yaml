@@ -63,3 +63,4 @@ flutter:
   assets:
     - assets/cash_bill.png
     - assets/cc_icon.png
+    - assets/ml/object_labeler.tflite
