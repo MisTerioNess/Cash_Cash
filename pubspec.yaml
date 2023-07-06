@@ -47,6 +47,9 @@ dependencies:
   image_cropper: ^5.0.0
   http : ^1.0.0
   graphic: ^2.2.0 # import 'package:graphic/graphic.dart';
+  document_file_save_plus: ^2.0.0
+  syncfusion_flutter_xlsio: ^22.1.37
+  screenshot: ^2.1.0
 
 flutter_icons:
   image_path: "assets/cc_icon.png"
@@ -63,4 +66,4 @@ flutter:
   assets:
     - assets/cash_bill.png
     - assets/cc_icon.png
-    - assets/ml/object_labeler.tflite
+    - assets/ml/bob.tflite
