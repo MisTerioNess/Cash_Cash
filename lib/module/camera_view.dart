@@ -1,12 +1,17 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
-import 'package:cash_cash/module/object_detector.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import 'package:image_picker/image_picker.dart';
+
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
+
+import 'package:graphic/graphic.dart';
 
 import '../main.dart';
 
@@ -30,13 +35,12 @@ class CameraView extends StatefulWidget {
 
   final String title;
   final CustomPaint? customPaint;
-  final String? customPaintText;
+  final CustomPaint? customPaintText;
   final String? text;
   final Function(InputImage inputImage) onImage;
   final Function(CustomPaint customPaint) resetCustomPaint;
   final Function(ScreenMode mode)? onScreenModeChanged;
   final CameraLensDirection initialDirection;
-
 
   @override
   State<CameraView> createState() => _CameraViewState();
@@ -59,6 +63,84 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   double _baseScaleFactor = 1.0;
   late final AnimationController _animationController;
   late final Animation<double> _animation;
+
+  bool _isProcess = false;
+
+  late String total;
+  late String total_banknotes;
+  late String count_banknotes;
+  late Map<String, dynamic> banknotes;
+  late String total_coins;
+  late String count_coins;
+  late Map<String, dynamic> coins;
+  late String total_cheques;
+  late String count_cheques;
+  List<Map<String, dynamic>> dataChart = [];
+  List imgCheques = [];
+
+  final TextRecognizer _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+
+  void uploadImage(File imageFile) async {
+    // L'URL de votre endpoint de téléchargement
+    var uri = Uri.parse('http://149.202.49.224:8000/upload_image');
+
+    // Créer une requête multipart
+    var request = http.MultipartRequest('POST', uri);
+
+    // Ajouter le fichier à la requête
+    request.files.add(await http.MultipartFile.fromPath(
+      'image', // le nom du paramètre POST pour le fichier
+      imageFile.path,
+      filename: path.basename(imageFile.path), // le nom du fichier à envoyer
+    ));
+
+    // Envoyer la requête
+    var response = await request.send();
+    var responseBody = await response.stream.transform(utf8.decoder).join();
+    print(responseBody);
+    var responseBodyDict = jsonDecode(responseBody);
+    total = responseBodyDict['total'];
+    total_banknotes = responseBodyDict['total_banknotes'];
+    count_banknotes = responseBodyDict['count_banknotes'];
+    banknotes = Map<String, dynamic>.from(responseBodyDict['all_banknotes']);
+    total_coins = responseBodyDict['total_coins'];
+    count_coins = responseBodyDict['count_coins'];
+    coins = Map<String, dynamic>.from(responseBodyDict['all_coins']);
+    total_cheques = responseBodyDict['total_cheques'];
+    count_cheques = responseBodyDict['count_cheques'];
+    imgCheques = responseBodyDict['img_cheques'];
+
+
+    for (var entry in coins.entries) {
+      if(entry.value != 0) {
+        Map<String, dynamic> entries = new Map<String, dynamic>();
+        entries['genre'] = entry.key;
+        entries['sold'] = entry.value;
+        dataChart.add(entries);
+      }
+    }
+    for (var entry in banknotes.entries) {
+      if(entry.value != 0) {
+        Map<String, dynamic> entries = new Map<String, dynamic>();
+        entries['genre'] = entry.key;
+        entries['sold'] = entry.value;
+        dataChart.add(entries);
+      }
+    }
+      Map<String, dynamic> entries = new Map<String, dynamic>();
+      entries['genre'] = 'cheque';
+      entries['sold'] = imgCheques.length;
+      dataChart.add(entries);
+
+    // Vérifier la réponse
+    if (response.statusCode == 200) {
+      _isProcess = false;
+      print('Upload successful');
+      setState(() {});
+    } else {
+      print('Upload failed with status: ${response.statusCode}');
+    }
+  }
 
 
   void resetCustomPaint() {
@@ -169,8 +251,8 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
 
     try {
       await _controller?.initialize();
-      _controller?.setZoomLevel(zoomLevel);
-      final imageFile = await _controller?.takePicture();
+      _controller!.setZoomLevel(zoomLevel);
+      final imageFile = await _controller!.takePicture();
 
       setState(() {
         _imageFile = imageFile;
@@ -182,25 +264,35 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
 
   /// annule la prise de la photo et retourne sur la preview de la caméra
   void _retry() {
-    setState(() async {
-      await _stopLiveFeed();
-      _imageFile = null;
-      resetCustomPaint();
-      await _startLiveFeed();
-    });
+    if(_mode == ScreenMode.gallery) {
+      _returnToGallery();
+    } else {
+      setState(() async {
+        await _stopLiveFeed();
+        _imageFile = null;
+        resetCustomPaint();
+        await _startLiveFeed();
+      });
+    }
   }
+
   /// valide la prise de la photo
   void _confirm() async {
     await _stopLiveFeed();
     setState(() {
       _showDashboard = true;
     });
-    print('OK SIRI'); // TODO: rediriger l'image vers le dashboard
+
+    final path = _imageFile?.path;
+    _isProcess = true;
+    uploadImage(File(path!));
   }
+
   /// depuis le dashboard, repartir dans la galerie
   void _returnToGallery() {
     setState(() {
       _showDashboard = false;
+      dataChart = [];
       _imageFile = null;
     });
   }
@@ -347,43 +439,26 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   /// Affiche la galerie
   Widget _galleryBody() {
     return ListView(shrinkWrap: true, children: [
-      _image != null
-          ? SizedBox(
-        height: 400,
-        width: 400,
-        child: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            Image.file(_image!),
-            if (widget.customPaint != null) widget.customPaint!,
-          ],
+      _imageFile != null ?
+        _dashboard()
+        :
+        Icon(
+          Icons.euro,
+          size: 250,
         ),
-      )
-          : Icon(
-        Icons.euro,
-        size: 250,
-      ),
-      Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: ElevatedButton(
-          child: Text('Image depuis la galerie'),
-          onPressed: () => _getImage(ImageSource.gallery),
-        ),
-      ),
-      Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: ElevatedButton(
-          child: Text('Prendre une photo'),
-          onPressed: () => _getImage(ImageSource.camera),
-        ),
-      ),
-      // TODO: mettre l'historisation du dashboard ou l'afficher en dessous de ces boutons
-      if (_image != null)
         Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-              widget.customPaintText != null ? '${widget.customPaintText}': 'boude')
-              //'${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: ElevatedButton(
+            child: Text('Image depuis la galerie'),
+            onPressed: () => _getImage(ImageSource.gallery),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: ElevatedButton(
+            child: Text('Prendre une photo'),
+            onPressed: () => _switchScreenMode(),
+          ),
         ),
     ]);
   }
@@ -433,7 +508,15 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                     File(_imageFile!.path),
                     fit: BoxFit.cover,
                   ),
-                  Align(
+                  if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement et le filtre blanc
+                    Container(
+                      color: Colors.white.withOpacity(0.5), // Couleur blanche avec opacité de 10%
+                    ),
+                  if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement
+                    Center(
+                      child: CircularProgressIndicator(),
+                    ), // Si isProcessing est true, affichez le spinner de chargement
+                  if(_isProcess == false) Align(
                     alignment: Alignment.bottomCenter,
                     child: AnimatedBuilder(
                       animation: _animation,
@@ -450,9 +533,9 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                   ),
                   if (widget.customPaint != null) widget.customPaint!,
                 ],
-              ),
             ),
-            Card(
+    ),
+            if(_isProcess == false) Card(
               child: ListTile(
                 leading: Image(
                   image: AssetImage('assets/cash_bill.png'),
@@ -460,40 +543,109 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                   height: 50, // Hauteur souhaitée
                   fit: BoxFit.contain, // Contrôle le mode d'ajustement de l'image
                 ),
-                title: Text('Montant total: '),
+                title: Text("Montant total: ${total.isNotEmpty ? '$total€' : 'N/A'}"),
               ),
             ),
-            Text("Détails"),
-            Card(
+            if(_isProcess== false) Text("Détails"),
+            if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.payments_outlined, size: 36),
-                title: Text('Montant des billets: '),
-                subtitle: Text('Nombre de billets: '),
+                title: Text("Montant des billets: ${total_banknotes.isNotEmpty ? '$total_banknotes€' : 'N/A'}"),
+                subtitle: Text("Nombre de billets: ${count_banknotes.isNotEmpty ? count_banknotes : 'N/A'}"),
               ),
             ),
-            Card(
+            if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.paid_outlined, size: 36),
-                title: Text('Montant des pièces: '),
-                subtitle: Text('Nombre de pièces: '),
+                title: Text("Montant des pièces: ${total_coins.isNotEmpty ? '$total_coins€' : 'N/A'}"),
+                subtitle: Text("Nombre de pièces: ${count_coins.isNotEmpty ? count_coins : 'N/A'}"),
               ),
             ),
-            Card(
+            if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.request_quote_outlined, size: 36),
-                title: Text("Montant des chèques: "),
-                subtitle: Text("Nombre de chèques: ")
-              )
-            )
+                title: Text("Montant des chèques: ${total_cheques.isNotEmpty ? '$total_cheques€' : 'N/A'}"),
+                subtitle: Text("Nombre de chèques: ${count_cheques.isNotEmpty ? count_cheques : 'N/A'}"),
+                trailing: IconButton(
+                  icon: Icon(Icons.add_box_outlined),
+                  onPressed: () {
+                    // Votre fonction à exécuter lorsque l'icône est pressée
+                    showChequeDetail(_imageFile!);
+                  },
+                ),
+              ),
+            ),
+            if(_isProcess == false) Container(
+              margin: const EdgeInsets.only(top: 10),
+              width: 350,
+              height: 300,
+              child: Chart(
+                data: dataChart,
+                variables: {
+                  'genre': Variable(
+                    accessor: (Map map) => map['genre'] as String
+                  ),
+                  'sold': Variable(
+                    accessor: (Map map) => map['sold'] as num
+                  ),
+                },
+                transforms: [
+                  Proportion( // faire une somme des montants
+                    variable: 'sold',
+                    as: 'percent',
+                  )
+                ],
+                marks: [
+                  IntervalMark(
+                    position: Varset('percent') / Varset('genre'),
+                    label: LabelEncode(
+                      encoder: (tuple) => Label(
+                        "qte: ${tuple['sold'].toString()}\n"
+                            "${tuple['genre'].toString()}",
+                        LabelStyle(textStyle: Defaults.runeStyle),
+                      ),
+                    ),
+                    color: ColorEncode(
+                        variable: 'genre', values: Defaults.colors10),
+                    modifiers: [StackModifier()],
+                  )
+                ],
+                coord: PolarCoord(transposed: true, dimCount: 1),
+              ),
+            ),
           ],
-        ),
       ),
-    );
+    ),);
+  }
+
+  Future<InputImage?> downloadImage(String url) async {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final file = File('${Directory.systemTemp.path}/image.jpg');
+      await file.writeAsBytes(response.bodyBytes);
+      print('Image téléchargée avec succès : ${file.path}');
+      return InputImage.fromFilePath(file.path);
+    } else {
+      print('Échec du téléchargement de l image. Code d erreur : ${response.statusCode}');
+      return null;
+    }
+  }
+
+  Future showChequeDetail(XFile inputImage) async {
+    String path = imgCheques[0];
+
+    if(path != null) {
+      final InputImage? inputImage = await downloadImage('http://149.202.49.224:8000/$path');
+      final recognizedText = await _textRecognizer.processImage(inputImage!);
+      print(recognizedText.text);
+      Navigator.pushNamed(context, '/chequeDetail', arguments: {'path': path, 'txt': recognizedText.text});
+      print("TAble");
+    }
   }
 
   Future _getImage(ImageSource source) async {
     setState(() {
-      _image = null;
+      _imageFile = null;
       _path = null;
     });
 
@@ -507,7 +659,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
 
   /// Change le mode de la caméra
   void _switchScreenMode() {
-    _image = null;
+    _imageFile = null;
 
     if (_mode == ScreenMode.liveFeed) {
       _mode = ScreenMode.gallery;
@@ -578,7 +730,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
       return;
     }
     setState(() {
-      _image = File(path);
+      _imageFile = XFile(File(path).path);
     });
     _path = path;
     final inputImage = InputImage.fromFilePath(path);

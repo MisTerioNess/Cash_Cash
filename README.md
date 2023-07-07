@@ -144,5 +144,5 @@ Enfin (le vrai enfin), copier la ligne fourni dans la section ``Execute the Scan
 
 [object detection](https://pub.dev/packages/google_mlkit_object_detection),
 [text_recognition](https://pub.dev/packages/google_mlkit_text_recognition),
-[permissions](https://developer.android.com/training/permissions/declaring?hl=fr)
+[permissions](https://developer.android.com/training/permissions/declaring?hl=fr),
 [camera](https://github.com/googlesamples/mlkit/tree/master/android/vision-quickstart)

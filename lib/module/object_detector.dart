@@ -9,7 +9,6 @@ import 'package:path_provider/path_provider.dart';
 import 'camera_view.dart';
 import 'package:image/image.dart' as img;
 import 'package:http/http.dart' as http;
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'painters/paintersText.dart';
 
 import '../main.dart';
@@ -25,38 +24,16 @@ class ObjectDetectorView extends StatefulWidget {
 
 /// Mise à jour de la vue.
 class _ObjectDetectorView extends State<ObjectDetectorView> {
+
     late ObjectDetector _objectDetector;
     bool _canProcess = false;
     bool _isBusy = false;
     CustomPaint? _customPaint;
     String? _text;
-    final TextRecognizer _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-    String? _customPaintText;
 
-    void uploadImage(io.File imageFile) async {
-      // L'URL de votre endpoint de téléchargement
-      var uri = Uri.parse('http://149.202.49.224:8000/upload_image');
+    CustomPaint? _customPaintText;
+    late ObjectDetector _objectDetectorImage;
 
-      // Créer une requête multipart
-      var request = http.MultipartRequest('POST', uri);
-
-      // Ajouter le fichier à la requête
-      request.files.add(await http.MultipartFile.fromPath(
-        'image', // le nom du paramètre POST pour le fichier
-        imageFile.path,
-        filename: basename(imageFile.path), // le nom du fichier à envoyer
-      ));
-
-      // Envoyer la requête
-      var response = await request.send();
-
-      // Vérifier la réponse
-      if (response.statusCode == 200) {
-        print('Upload successful');
-      } else {
-        print('Upload failed with status: ${response.statusCode}');
-      }
-    }
 
     /// Initialisation de l'état de base.
     @override
@@ -117,39 +94,22 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       print('Set detector in mode: $mode');
 
       // uncomment next lines if you want to use the default model
-      final options = ObjectDetectorOptions(
+      final optionsImage = ObjectDetectorOptions(
           mode: mode,
           classifyObjects: true,
           multipleObjects: true);
-      _objectDetector = ObjectDetector(options: options);
+      _objectDetectorImage = ObjectDetector(options: optionsImage);
 
       // uncomment next lines if you want to use a local model
       // make sure to add tflite model to assets/ml
-      // const path = 'object_labeler.tflite';
-      // final modelPath = await _getModel(path);
-      // print(modelPath);
-      // final options = LocalObjectDetectorOptions(
-      //   mode: mode,
-      //   modelPath: modelPath,
-      //   classifyObjects: true,
-      //   multipleObjects: true,
-      // );
-      // _objectDetector = ObjectDetector(options: options);
-
-      // uncomment next lines if you want to use a remote model
-      // make sure to add model to firebase
-      // final modelName = 'bird-classifier';
-      // final response =
-      //     await FirebaseObjectDetectorModelManager().downloadModel(modelName);
-      // print('Downloaded: $response');
-      // final options = FirebaseObjectDetectorOptions(
-      //   mode: mode,
-      //   modelName: modelName,
-      //   classifyObjects: true,
-      //   multipleObjects: true,
-      // );
-      // _objectDetector = ObjectDetector(options: options);
-
+      final modelPath = await _getModel('assets/ml/object_labeler.tflite');
+      final options = LocalObjectDetectorOptions(
+        modelPath: modelPath,
+        classifyObjects: true,
+        multipleObjects: true,
+        mode: DetectionMode.stream,
+      );
+      _objectDetector = ObjectDetector(options: options);
       _canProcess = true;
     }
 
@@ -162,17 +122,17 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         _text = '';
       });
 
-      final recognizedText = await _textRecognizer.processImage(inputImage)
-          .then((value) => _customPaintText = value.text);
+
 
       final objects = await _objectDetector.processImage(inputImage);
 
-      print(recognizedText);
+      //print(recognizedText);
 
       print("passe dans processImage");
 
       if (inputImage.metadata?.size != null &&
           inputImage.metadata?.rotation != null) {
+        final objects = await _objectDetector.processImage(inputImage);
         final painter = ObjectDetectorPainter(
             objects, inputImage.metadata!.rotation, inputImage.metadata!.size);
         _customPaint = CustomPaint(painter: painter);
@@ -186,6 +146,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         // print("passe dans le if");
         // print(recognizedText.text);
       } else {
+        final objects = await _objectDetectorImage.processImage(inputImage);
         // Create a File object with the picture
         String? path = inputImage.filePath;
         final file = io.File(path!);
@@ -258,7 +219,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
     /// Récupère le modèle.
     Future<String> _getModel(String assetPath) async {
       if (io.Platform.isAndroid) {
-        return 'assets/$assetPath';
+        return 'flutter_assets/$assetPath';
       }
       final path = '${(await getApplicationSupportDirectory()).path}/$assetPath';
       await io.Directory(dirname(path)).create(recursive: true);
@@ -270,4 +231,5 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       }
       return file.path;
     }
+
 }
