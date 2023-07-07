@@ -8,6 +8,57 @@ import 'dart:convert';
 
 Dio dio = Dio();
 
+Dio dio = Dio();
+PlatformFile? _imageFile;
+Future<void> pickImage() async {
+  try {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+    );
+    if (result == null) return;
+
+    _imageFile = result.files.first;
+    print('Image selected: ${_imageFile!.name}');
+  } catch (e) {
+    print('Error picking image: $e');
+  }
+}
+
+void send() async {
+  if (_imageFile == null) {
+    print('No image selected.');
+    return;
+  }
+
+  try {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('http://149.202.49.224:8000/upload_image'), // Replace with your server URL
+    );
+
+    final fileBytes = _imageFile!.bytes!;
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'image',
+        fileBytes,
+        filename: _imageFile!.name,
+      ),
+    );
+
+    final response = await request.send();
+
+    //final responseBody = await response.stream.transform(utf8.decoder).join();
+    //print(responseBody);
+    if (response.statusCode == 200) {
+      print('Image uploaded successfully.');
+    } else {
+      print('Error uploading image. Status code: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error sending image: $e');
+  }
+}
+
 class MyWebApp extends StatelessWidget {
   const MyWebApp({super.key});
 
@@ -117,6 +168,8 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
   }
 
+ }
+
   @override
   Widget build(BuildContext context) {
     home:return Scaffold(
@@ -146,6 +199,26 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       bottomNavigationBar: BottomAppBar(
         color: Color.fromARGB(255,130,71,207),
+        title: const Text("Cash_Cash"),
+        backgroundColor: Colors.blueGrey,
+      ),
+      body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // If image file is not null, display it using Image widget
+              if (_imageFile != null)
+                Image.memory(
+                  Uint8List.fromList(_imageFile!.bytes!),
+                  width: 300,
+                  height: 300,
+                  fit: BoxFit.cover,
+                ),
+            ],
+          )
+      ),
+      bottomNavigationBar: BottomAppBar(
+        color: Colors.blueGrey,
         shape: const CircularNotchedRectangle(),
         notchMargin: 6,
         child: Row(
@@ -173,7 +246,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 Icons.notifications,
                 color: Colors.white60,
               ),
-              onPressed:(){}//_getEncadredImage,
+              onPressed:(){},
             ),
             IconButton(
               icon: const Icon(
@@ -187,7 +260,6 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       floatingActionButton: FloatingActionButton(
           onPressed: pickImage,
-          //_openImagePicker;
           backgroundColor: Color.fromARGB(255,252,183,94),
           child: const Icon(Icons.image_outlined)),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,

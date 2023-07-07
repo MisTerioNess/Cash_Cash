@@ -44,6 +44,12 @@ dependencies:
   path: ^1.8.2
   path_provider: ^2.0.15
   image: ^4.0.17
+  image_cropper: ^5.0.0
+  http : ^1.0.0
+  graphic: ^2.2.0 # import 'package:graphic/graphic.dart';
+  document_file_save_plus: ^2.0.0
+  syncfusion_flutter_xlsio: ^22.1.37
+  screenshot: ^2.1.0
 
 flutter_icons:
   image_path: "assets/cc_icon.png"
@@ -57,3 +63,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/cash_bill.png
+    - assets/cc_icon.png
+    - assets/ml/bob.tflite
