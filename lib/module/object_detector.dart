@@ -30,7 +30,6 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
   @override
   void initState() {
     super.initState();
-
     _initializeDetector(DetectionMode.stream);
   }
 
@@ -196,7 +195,6 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       // Nous écrivons ces données dans un fichier au chemin spécifié
       await file.writeAsBytes(byteData.buffer
           .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
-    }
 
     // Nous retournons le chemin du fichier
     return file.path;
