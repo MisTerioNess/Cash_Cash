@@ -34,6 +34,16 @@ Installation des dépendances.
 ```console
 flutter pub get
 ```
+# Mise à jour SDK environnement 
+Pour procéder à la mise à jour de SDK, suivez les étapes suivantes : 
+- ouvrir le terminal de l'IDE
+- saisir les commandes suivantes 
+```console 
+flutter channel beta 
+flutter upgrade
+flutter channel stable
+flutter upgrade --force  
+```
 
 # Utiliser un téléphone physique
 

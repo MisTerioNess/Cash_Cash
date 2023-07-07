@@ -8,6 +8,10 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'camera_view.dart';
 import 'package:image/image.dart' as img;
+import 'package:http/http.dart' as http;
+import 'painters/paintersText.dart';
+
+import '../main.dart';
 
 /// Cette classe est utilisée pour définir une vue qui peut être mise à jour dynamiquement en réponse à des changements d'état.
 class ObjectDetectorView extends StatefulWidget {
@@ -33,13 +37,8 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
     _initializeDetector(DetectionMode.stream);
   }
 
-  /// Vide la mémoire.
-  @override
-  void dispose() {
-    _canProcess = false;
-    _objectDetector.close();
-    super.dispose();
-  }
+  CustomPaint? _customPaintText;
+  late ObjectDetector _objectDetectorImage;
 
   /// Met à jour le widget principal.
   @override
@@ -76,7 +75,14 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
         _initializeDetector(DetectionMode.stream);
         return;
     }
-  }
+    
+    /// Vide la mémoire.
+    @override
+    void dispose() {
+      _canProcess = false;
+      _objectDetector.close();
+      super.dispose();
+    }
 
   /// Initialise les détecteurs d'objets.
   /// Cette fonction initialise les détecteurs d'objets en fonction du mode de détection spécifié.
@@ -159,8 +165,6 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
     if (mounted) {
       setState(() {});
     }
-  }
-
 
   /// Fonction pour récupérer le modèle (ou tout autre fichier d'asset).
   ///

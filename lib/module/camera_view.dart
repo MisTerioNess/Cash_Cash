@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:graphic/graphic.dart';
 import 'package:document_file_save_plus/document_file_save_plus.dart';
@@ -25,6 +26,7 @@ class CameraView extends StatefulWidget {
       {Key? key,
         required this.title,
         required this.customPaint,
+        required this.customPaintText,
         this.text,
         required this.onImage,
         required this.resetCustomPaint,
@@ -35,6 +37,7 @@ class CameraView extends StatefulWidget {
 
   final String title;
   final CustomPaint? customPaint;
+  final CustomPaint? customPaintText;
   final String? text;
   final Function(InputImage inputImage) onImage;
   final Function(CustomPaint customPaint) resetCustomPaint;
@@ -61,6 +64,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   double _baseScaleFactor = 1.0;
   late final AnimationController _animationController;
   late final Animation<double> _animation;
+
   bool _isProcess = false;
 
   late String total;
@@ -73,6 +77,11 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   late String totalCheques;
   late String countCheques;
   List<Map<String, dynamic>> dataChart = [];
+
+  List imgCheques = [];
+
+  final TextRecognizer _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+
   List<Color> chartColor = [
     const Color.fromARGB(255, 252,183,94),
     const Color.fromARGB(255, 130,71,207),
@@ -136,7 +145,45 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
       imageFile.path,
       filename: path.basename(imageFile.path), // le nom du fichier à envoyer
     ));
+    
+    // Envoyer la requête
+    var response = await request.send();
+    var responseBody = await response.stream.transform(utf8.decoder).join();
+    print(responseBody);
+    var responseBodyDict = jsonDecode(responseBody);
+    total = responseBodyDict['total'];
+    total_banknotes = responseBodyDict['total_banknotes'];
+    count_banknotes = responseBodyDict['count_banknotes'];
+    banknotes = Map<String, dynamic>.from(responseBodyDict['all_banknotes']);
+    total_coins = responseBodyDict['total_coins'];
+    count_coins = responseBodyDict['count_coins'];
+    coins = Map<String, dynamic>.from(responseBodyDict['all_coins']);
+    total_cheques = responseBodyDict['total_cheques'];
+    count_cheques = responseBodyDict['count_cheques'];
+    imgCheques = responseBodyDict['img_cheques'];
 
+
+    for (var entry in coins.entries) {
+      if(entry.value != 0) {
+        Map<String, dynamic> entries = new Map<String, dynamic>();
+        entries['genre'] = entry.key;
+        entries['sold'] = entry.value;
+        dataChart.add(entries);
+      }
+    }
+    for (var entry in banknotes.entries) {
+      if(entry.value != 0) {
+        Map<String, dynamic> entries = new Map<String, dynamic>();
+        entries['genre'] = entry.key;
+        entries['sold'] = entry.value;
+        dataChart.add(entries);
+      }
+    }
+      Map<String, dynamic> entries = new Map<String, dynamic>();
+      entries['genre'] = 'cheque';
+      entries['sold'] = imgCheques.length;
+      dataChart.add(entries);
+    
     return await request.send();
   }
 
@@ -318,6 +365,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     setState(() {
       _showDashboard = true;
     });
+
     final path = _imageFile?.path;
     _isProcess = true;
     uploadImage(File(path!));
@@ -464,6 +512,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
           children: <Widget>[
             CameraPreview(_controller!),
             if (widget.customPaint != null) widget.customPaint!,
+            //if (widget.customPaintText != null) widget.customPaintText!,
           ],
         ),
       ),
@@ -577,8 +626,8 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                   ),
                   if (widget.customPaint != null) widget.customPaint!,
                 ],
-              ),
             ),
+    ),
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Image(
@@ -587,7 +636,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                   height: 50, // Hauteur souhaitée
                   fit: BoxFit.contain, // Contrôle le mode d'ajustement de l'image
                 ),
-                title: Text("Montant total: ${total.isNotEmpty ? total : 'N/A'}"),
+                title: Text("Montant total: ${total.isNotEmpty ? '$total€' : 'N/A'}"),
               ),
             ),
             if(_isProcess== false) Text("Détails"),
@@ -601,16 +650,23 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.paid_outlined, size: 36),
-                title: Text("Montant des pièces: ${totalCoins.isNotEmpty ? '$totalCoins €' : 'N/A'}"),
-                subtitle: Text("Nombre de pièces: ${countCoins.isNotEmpty ? countCoins : 'N/A'}"),
+                title: Text("Montant des pièces: ${total_coins.isNotEmpty ? '$total_coins€' : 'N/A'}"),
+                subtitle: Text("Nombre de pièces: ${count_coins.isNotEmpty ? count_coins : 'N/A'}"),
               ),
             ),
             if(_isProcess == false) Card(
-                child: ListTile(
-                    leading: Icon(Icons.request_quote_outlined, size: 36),
-                    title: Text("Montant des chèques: ${totalCheques.isNotEmpty ? '$totalCheques€' : 'N/A'}"),
-                    subtitle: Text("Nombre de chèques: ${countCheques.isNotEmpty ? totalCheques : 'N/A'}")
-                )
+              child: ListTile(
+                leading: Icon(Icons.request_quote_outlined, size: 36),
+                title: Text("Montant des chèques: ${total_cheques.isNotEmpty ? '$total_cheques€' : 'N/A'}"),
+                subtitle: Text("Nombre de chèques: ${count_cheques.isNotEmpty ? count_cheques : 'N/A'}"),
+                trailing: IconButton(
+                  icon: Icon(Icons.add_box_outlined),
+                  onPressed: () {
+                    // Votre fonction à exécuter lorsque l'icône est pressée
+                    showChequeDetail(_imageFile!);
+                  },
+                ),
+              ),
             ),
             if(_isProcess == false) Container(
               margin: const EdgeInsets.only(top: 10),
@@ -666,9 +722,33 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
               },
             )
           ],
-        ),
       ),
-    );
+    ),);
+  }
+
+  Future<InputImage?> downloadImage(String url) async {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final file = File('${Directory.systemTemp.path}/image.jpg');
+      await file.writeAsBytes(response.bodyBytes);
+      print('Image téléchargée avec succès : ${file.path}');
+      return InputImage.fromFilePath(file.path);
+    } else {
+      print('Échec du téléchargement de l image. Code d erreur : ${response.statusCode}');
+      return null;
+    }
+  }
+
+  Future showChequeDetail(XFile inputImage) async {
+    String path = imgCheques[0];
+
+    if(path != null) {
+      final InputImage? inputImage = await downloadImage('http://149.202.49.224:8000/$path');
+      final recognizedText = await _textRecognizer.processImage(inputImage!);
+      print(recognizedText.text);
+      Navigator.pushNamed(context, '/chequeDetail', arguments: {'path': path, 'txt': recognizedText.text});
+      print("TAble");
+    }
   }
 
   /// Télécharge un fichier Excel avec des données de tableau et une capture d'écran d'un widget.
