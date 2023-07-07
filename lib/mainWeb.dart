@@ -64,7 +64,7 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://127.0.0.1:8000/upload_image'), // URL du server
+        Uri.parse('http://149.202.49.224:8000/upload_image_web'), // URL du server
       );
 
       final fileBytes = _imageFile!.bytes!;

@@ -207,3 +207,60 @@ def object_detector(image_path):
 
     # # TODO: Supprimer les images après analyse
     # os.remove(image_path)
+
+#partie Web
+@app.post("/upload_image_web")
+async def upload_image(image: UploadFile = File()):
+    content = await image.read(),
+    print(image.filename)
+    image.file.seek(0)
+    save_path = Path("tmp") / image.filename
+    with save_path.open("wb") as buffer:
+        shutil.copyfileobj(image.file, buffer)
+    return object_detector_web(save_path)
+
+
+def object_detector_web(image_path):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "tmp/concise-atlas-391308-75cb01131c11.json"
+
+    client = vision.ImageAnnotatorClient()
+
+    with open(image_path, 'rb') as image_file:
+        content = image_file.read()
+
+    image = vision.Image(content=content)
+
+    response = client.object_localization(image=image)
+
+    img = Image.open(image_path)
+
+    for i, object in enumerate(response.localized_object_annotations):
+        draw = ImageDraw.Draw(img)
+        print('Nom de l\'objet: {}'.format(object.name))
+        print('Confidence: {}'.format(object.score))
+
+        # Les coordonnées sont relatives à la taille de l'image, donc nous les multiplions
+        # par la largeur et la hauteur pour obtenir les vraies coordonnées.
+        box = [(vertex.x * img.width, vertex.y * img.height)
+               for vertex in object.bounding_poly.normalized_vertices]
+
+        # PIL exige que le rectangle de découpage soit sous la forme [gauche, haut, droite, bas]
+        # donc nous devons réorganiser les coordonnées
+        box = [box[0][0], box[0][1], box[2][0], box[2][1]]
+
+        draw.rectangle(box, outline="green", width=5)
+
+        # Découpez l'image et sauvegardez-la
+        cropped_img = img.crop(box)
+        cropped_img.save(f'tmp/objects/object_{i}.png')
+    return encadre_image(img)
+
+
+def encadre_image(img: Image):
+    # Convertion de l'image encadrée en bytes
+    img_bytes = io.BytesIO()
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    img.save(f"tmp/imageweb[timestamp].png", format='png')
+    img_bytes.seek(0)
+    # Renvoi de l'image encadrée en tant que réponse
+    return "tmp/caca.png"
