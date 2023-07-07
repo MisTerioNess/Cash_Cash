@@ -1,9 +1,9 @@
+import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'module/object_detector.dart';
 import 'package:universal_platform/universal_platform.dart';
 import 'mainWeb.dart';
-
 
 /// Initialisation d'une liste qui va contenir les caméras de l'appareil de l'utilisateur.
 List<CameraDescription> cameras = [];
@@ -20,10 +20,6 @@ void main() async{
     cameras = await availableCameras();
     runApp(MyApp());
   }
-
-}
-
-
 
 /// Fonction principale du projet.
 ///
