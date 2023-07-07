@@ -35,12 +35,12 @@ dependencies:
   cupertino_icons: ^1.0.2
   camera: ^0.10.5+2
   flutter_launcher_icons: ^0.13.1
-  google_mlkit_object_detection: ^0.8.0
-  google_mlkit_commons: ^0.4.0
+  google_mlkit_object_detection: ^0.9.0
+  google_mlkit_commons: ^0.5.0
   universal_platform: ^1.0.0+1
   file_picker: ^5.3.1
   dio: ^5.2.1+1
-  image_picker: ^0.8.9
+  image_picker: ^1.0.0
   path: ^1.8.2
   path_provider: ^2.0.15
   image: ^4.0.17
@@ -48,6 +48,9 @@ dependencies:
   http : ^1.0.0
   google_mlkit_text_recognition: ^0.8.1
   graphic: ^2.2.0 # import 'package:graphic/graphic.dart';
+  document_file_save_plus: ^2.0.0
+  syncfusion_flutter_xlsio: ^22.1.37
+  screenshot: ^2.1.0
 
 flutter_icons:
   image_path: "assets/cc_icon.png"
@@ -64,4 +67,4 @@ flutter:
   assets:
     - assets/cash_bill.png
     - assets/cc_icon.png
-    - assets/ml/object_labeler.tflite
+    - assets/ml/bob.tflite

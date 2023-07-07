@@ -1,0 +1,6 @@
+fastapi==0.98.0
+google-cloud-vision==3.4.3
+Pillow==9.5.0
+uvicorn==0.22.0
+python-multipart==0.0.6
+tensorflow==2.12.0
