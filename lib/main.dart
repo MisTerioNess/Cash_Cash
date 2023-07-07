@@ -8,18 +8,19 @@ import 'mainWeb.dart';
 /// Initialisation d'une liste qui va contenir les caméras de l'appareil de l'utilisateur.
 List<CameraDescription> cameras = [];
 
-void main() async{
+void main() async {
   bool isWeb = UniversalPlatform.isWeb;
-  if (isWeb){
+  if (isWeb) {
     runApp(MyWebApp());
   }
-  else{
+  else {
     /// S'assure que les widgets sont initialisés correctement avant d'exécuter le reste du code.
     WidgetsFlutterBinding.ensureInitialized();
 
     cameras = await availableCameras();
     runApp(MyApp());
   }
+}
 
 /// Fonction principale du projet.
 ///
