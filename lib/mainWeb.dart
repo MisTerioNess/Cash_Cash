@@ -8,57 +8,6 @@ import 'dart:convert';
 
 Dio dio = Dio();
 
-Dio dio = Dio();
-PlatformFile? _imageFile;
-Future<void> pickImage() async {
-  try {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-    );
-    if (result == null) return;
-
-    _imageFile = result.files.first;
-    print('Image selected: ${_imageFile!.name}');
-  } catch (e) {
-    print('Error picking image: $e');
-  }
-}
-
-void send() async {
-  if (_imageFile == null) {
-    print('No image selected.');
-    return;
-  }
-
-  try {
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('http://149.202.49.224:8000/upload_image'), // Replace with your server URL
-    );
-
-    final fileBytes = _imageFile!.bytes!;
-    request.files.add(
-      http.MultipartFile.fromBytes(
-        'image',
-        fileBytes,
-        filename: _imageFile!.name,
-      ),
-    );
-
-    final response = await request.send();
-
-    //final responseBody = await response.stream.transform(utf8.decoder).join();
-    //print(responseBody);
-    if (response.statusCode == 200) {
-      print('Image uploaded successfully.');
-    } else {
-      print('Error uploading image. Status code: ${response.statusCode}');
-    }
-  } catch (e) {
-    print('Error sending image: $e');
-  }
-}
-
 class MyWebApp extends StatelessWidget {
   const MyWebApp({super.key});
 
@@ -84,8 +33,11 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateMixin{
   PlatformFile? _imageFile;
+  bool _isImage = false;
+  late final AnimationController _animationController;
+  late final Animation<double> _animation;
 
   Future<void> pickImage() async {
     try {
@@ -103,7 +55,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-   void send() async {
+  void send() async {
     if (_imageFile == null) {
       print('No image selected.');
       return;
@@ -118,9 +70,9 @@ class _MyHomePageState extends State<MyHomePage> {
       final fileBytes = _imageFile!.bytes!;
       request.files.add(
         http.MultipartFile.fromBytes(
-          'image',
-          fileBytes,
-          filename: _imageFile!.name,
+            'image',
+            fileBytes,
+            filename: _imageFile!.name,
             contentType: MediaType('image', 'PNG')
         ),
       );
@@ -131,6 +83,7 @@ class _MyHomePageState extends State<MyHomePage> {
         var responseBody = await response.stream.transform(utf8.decoder).join();
         String responseBodyQuotes = responseBody.replaceAll('"', '');
         print(responseBodyQuotes);
+        _isImage = true;
 
         showDialog(
           context: context,
@@ -166,9 +119,13 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-  }
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat(reverse: true);
 
- }
+    _animation = Tween<double>(begin: 0, end: 8).animate(_animationController);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -185,83 +142,92 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       body: Center(
-          child: Column(
+        child: Column(
             children: [
               if (_imageFile != null)
                 Image.memory(
                   Uint8List.fromList(_imageFile!.bytes!),
-                  alignment: Alignment.bottomRight,
+                  alignment: Alignment.center,
                   width: 800,
                   height: 600,
-                )
-              ]
-            ),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        color: Color.fromARGB(255,130,71,207),
-        title: const Text("Cash_Cash"),
-        backgroundColor: Colors.blueGrey,
-      ),
-      body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // If image file is not null, display it using Image widget
-              if (_imageFile != null)
-                Image.memory(
-                  Uint8List.fromList(_imageFile!.bytes!),
-                  width: 300,
-                  height: 300,
-                  fit: BoxFit.cover,
                 ),
-            ],
-          )
+              if(_isImage == false) Align(
+                alignment: Alignment.topCenter,
+                child: AnimatedBuilder(
+                  animation: _animation,
+                  builder: (BuildContext context, Widget? child) {
+                    return Transform.translate(
+                      offset: Offset(0, -_animation.value),
+                      child: child,
+                    );
+                  },
+                  child: Icon(Icons.arrow_downward, // Icône animé
+                      color: Color.fromARGB(255, 247,115,127),
+                      size: 50.0),
+                ),
+              ),
+            ]
+        ),
       ),
       bottomNavigationBar: BottomAppBar(
-        color: Colors.blueGrey,
+        color: Color.fromARGB(255, 130, 71, 207),
         shape: const CircularNotchedRectangle(),
         notchMargin: 6,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            IconButton(
-              icon: const Icon(
-                Icons.stacked_bar_chart,
-                color: Colors.white60,
+            Tooltip(
+              message: 'Graph',
+              child: IconButton(
+                icon: const Icon(
+                  Icons.stacked_bar_chart,
+                  color: Colors.white60,
+                ),
+                onPressed: () {},
               ),
-              onPressed:(){},
             ),
-            IconButton(
-              icon: const Icon(
-                Icons.import_export_sharp,
-                color: Colors.white60,
+            Tooltip(
+              message: 'Import/Export',
+              child: IconButton(
+                icon: const Icon(
+                  Icons.import_export_sharp,
+                  color: Colors.white60,
+                ),
+                onPressed: send,
               ),
-              onPressed: send,
             ),
             const SizedBox(
               width: 20,
             ),
-            IconButton(
-              icon: const Icon(
-                Icons.notifications,
-                color: Colors.white60,
+            Tooltip(
+              message: 'Notifications',
+              child: IconButton(
+                icon: const Icon(
+                  Icons.notifications,
+                  color: Colors.white60,
+                ),
+                onPressed: () {},
               ),
-              onPressed:(){},
             ),
-            IconButton(
-              icon: const Icon(
-                Icons.settings,
-                color: Colors.white60,
+            Tooltip(
+              message: 'Settings',
+              child: IconButton(
+                icon: const Icon(
+                  Icons.settings,
+                  color: Colors.white60,
+                ),
+                onPressed: () {},
               ),
-              onPressed: () {},
             ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-          onPressed: pickImage,
-          backgroundColor: Color.fromARGB(255,252,183,94),
-          child: const Icon(Icons.image_outlined)),
+        onPressed: pickImage,
+        backgroundColor: Color.fromARGB(255, 252, 183, 94),
+        child: const Icon(Icons.image_outlined),
+        tooltip: 'Pick Image',
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
