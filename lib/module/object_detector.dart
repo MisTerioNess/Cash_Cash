@@ -8,8 +8,6 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'camera_view.dart';
 import 'package:image/image.dart' as img;
-import 'package:http/http.dart' as http;
-
 
 /// Cette classe est utilisée pour définir une vue qui peut être mise à jour dynamiquement en réponse à des changements d'état.
 class ObjectDetectorView extends StatefulWidget {
@@ -44,7 +42,7 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
     super.dispose();
   }
 
-  /// Met à jour un widget.
+  /// Met à jour le widget principal.
   @override
   Widget build(BuildContext context) {
     return CameraView(
@@ -81,20 +79,19 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
     }
   }
 
-  /// Initialise le detecteur d'objets.
+  /// Initialise les détecteurs d'objets.
+  /// Cette fonction initialise les détecteurs d'objets en fonction du mode de détection spécifié.
+  /// Deux options sont disponibles : une détection basée sur un modèle par défaut ou une détection basée sur un modèle local.
   void _initializeDetector(DetectionMode mode) async {
-    print('Set detector in mode: $mode');
 
-    // uncomment next lines if you want to use the default model
     final optionsImage = ObjectDetectorOptions(
         mode: mode,
         classifyObjects: true,
-        multipleObjects: true);
+        multipleObjects: true
+    );
     _objectDetectorImage = ObjectDetector(options: optionsImage);
 
-    // uncomment next lines if you want to use a local model
-    // make sure to add tflite model to assets/ml
-    final modelPath = await _getModel('assets/ml/object_labeler.tflite');
+    final modelPath = await _getModel('assets/ml/bob.tflite');
     final options = LocalObjectDetectorOptions(
       modelPath: modelPath,
       classifyObjects: true,
@@ -102,60 +99,107 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       mode: DetectionMode.stream,
     );
     _objectDetector = ObjectDetector(options: options);
+
+    // Une fois le détecteur d'objets initialisé, il est prt à traiter les images
     _canProcess = true;
   }
 
+
   /// Traitement de l'image.
+  /// Cette fonction prend une [inputImage] en paramètre et effectue un traitement
+  /// en fonction des métadonnées de l'image.
+  /// Le traitement peut être effectué en temps réel ou sur des images statiques.
   Future<void> processImage(InputImage inputImage) async {
-    if (!_canProcess) return;
-    if (_isBusy) return;
+    // Si on ne peut pas traiter l'image ou si une opération est déjà en cours, on arrête le traitement
+    if (!_canProcess || _isBusy) return;
+
     _isBusy = true;
+
+    // Réinitialise le texte affiché
     setState(() {
       _text = '';
     });
 
+    List<DetectedObject> objects;
+    Size size;
+    InputImageRotation rotation;
+
+    // Si les métadonnées de l'image sont disponibles, cela signifie que nous avons une image en temps réel
     if (inputImage.metadata?.size != null &&
         inputImage.metadata?.rotation != null) {
-      final objects = await _objectDetector.processImage(inputImage);
-      final painter = ObjectDetectorPainter(
-          objects, inputImage.metadata!.rotation, inputImage.metadata!.size);
-      _customPaint = CustomPaint(painter: painter);
+
+      // Utilise le modèle Bob, plus performant pour la détection d'objets en temps réel
+      objects = await _objectDetector.processImage(inputImage);
+      size = inputImage.metadata!.size;
+      rotation = inputImage.metadata!.rotation;
+
     } else {
-      final objects = await _objectDetectorImage.processImage(inputImage);
-      // Create a File object with the picture
+
+      // Utilise le modèle John, moins performant mais plus rapide pour la détection d'objets sur des images statiques
+      objects = await _objectDetectorImage.processImage(inputImage);
+
+      // Converti l'image pour récupérer ses dimensions
       String? path = inputImage.filePath;
       final file = io.File(path!);
       final img.Image? image = img.decodeImage(await file.readAsBytes());
-      // Get the size of the image
       final double? width = image?.width.toDouble();
       final double? height = image?.height.toDouble();
-      print(Size(width!, height!));
 
-      // Add rect on objects detected.
-      final painter = ObjectDetectorPainter(
-          objects, InputImageRotation.rotation0deg, Size(width!, height!));
-      _customPaint = CustomPaint(painter: painter);
+      size = Size(width!, height!);
+      rotation = InputImageRotation.rotation0deg;
+
     }
 
+    // Création du peintre pour l'affichage des rectangles autour des objets
+    final painter = ObjectDetectorPainter(objects, rotation, size);
+    _customPaint = CustomPaint(painter: painter);
+
     _isBusy = false;
+
+    // Met à jour l'état de l'application si elle est toujours montée
     if (mounted) {
       setState(() {});
     }
   }
 
-  /// Récupère le modèle.
+
+  /// Fonction pour récupérer le modèle (ou tout autre fichier d'asset).
+  ///
+  /// Cette fonction récupère le chemin d'un fichier de modèle donné en fonction de la plateforme
+  /// sur laquelle l'application s'exécute. Elle effectue différentes tâches en fonction de la plateforme.
+  ///
+  /// [assetPath] est le chemin de l'asset au sein du bundle d'assets de Flutter.
   Future<String> _getModel(String assetPath) async {
+
+    // Si la plateforme est Android
     if (io.Platform.isAndroid) {
+      // Sur Android, nous pouvons accéder directement à l'asset à partir du bundle d'assets de Flutter.
       return 'flutter_assets/$assetPath';
     }
+
+    // Si la plateforme n'est pas Android (probablement iOS)
+    // Nous obtenons le répertoire de support de l'application, et ajoutons le assetPath.
     final path = '${(await getApplicationSupportDirectory()).path}/$assetPath';
+
+    // Le répertoire pour le fichier est créé s'il n'existe pas.
+    // Ceci est fait de manière récursive, ce qui signifier qu'il créera tous les répertoires jusqu'au chemin donné s'ils n'existent pas.
     await io.Directory(dirname(path)).create(recursive: true);
+
+    // Une référence au fichier est créée.
     final file = io.File(path);
+
+    // Si le fichier n'existe pas déjà
     if (!await file.exists()) {
+      // Nous chargeons les données de l'asset du bundle d'assets de Flutter
       final byteData = await rootBundle.load(assetPath);
+
+      // Nous écrivons ces données dans un fichier au chemin spécifié
       await file.writeAsBytes(byteData.buffer
           .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
     }
+
+    // Nous retournons le chemin du fichier
     return file.path;
   }
+
 }

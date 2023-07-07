@@ -1,18 +1,20 @@
+// ignore_for_file: unused_field
+
+import '../main.dart';
 import 'dart:convert';
 import 'dart:io';
-
+import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
-
 import 'package:image_picker/image_picker.dart';
-
+import 'package:graphic/graphic.dart';
+import 'package:document_file_save_plus/document_file_save_plus.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:image/image.dart' as img;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
-
-import 'package:graphic/graphic.dart';
-
-import '../main.dart';
+import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsx;
 
 /// Définition des mode.
 enum ScreenMode { liveFeed, gallery }
@@ -47,7 +49,6 @@ class CameraView extends StatefulWidget {
 class _CameraViewState extends State<CameraView> with SingleTickerProviderStateMixin {
   ScreenMode _mode = ScreenMode.liveFeed;
   CameraController? _controller;
-  File? _image;
   XFile? _imageFile;
   String? _path;
   ImagePicker? _imagePicker;
@@ -63,22 +64,71 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   bool _isProcess = false;
 
   late String total;
-  late String total_banknotes;
-  late String count_banknotes;
+  late String totalBanknotes;
+  late String countBanknotes;
   late Map<String, dynamic> banknotes;
-  late String total_coins;
-  late String count_coins;
+  late String totalCoins;
+  late String countCoins;
   late Map<String, dynamic> coins;
-  late String total_cheques;
-  late String count_cheques;
+  late String totalCheques;
+  late String countCheques;
   List<Map<String, dynamic>> dataChart = [];
+  List<Color> chartColor = [
+    const Color.fromARGB(255, 252,183,94),
+    const Color.fromARGB(255, 130,71,207),
+    const Color.fromARGB(255, 247,115,127),
+    const Color.fromARGB(255, 252,183,94),
+    const Color.fromARGB(255, 130,71,207),
+    const Color.fromARGB(255, 247,115,127),
+    const Color.fromARGB(255, 252,183,94),
+    const Color.fromARGB(255, 130,71,207),
+    const Color.fromARGB(255, 247,115,127),
+  ];
+  final ScreenshotController screenshotController = ScreenshotController();
 
-  void uploadImage(File imageFile) async {
+  /// Redimensionne une image.
+  ///
+  /// [imageBytes] - les bytes de l'image à redimensionner.
+  /// [newWidth] - la nouvelle largeur de l'image.
+  /// [newHeight] - la nouvelle hauteur de l'image.
+  ///
+  /// Retourne les bytes de l'image redimensionnée, ou null si l'image ne peut pas être décodée.
+  Future<Uint8List?> resizeImage(Uint8List imageBytes, int newWidth, int newHeight) async {
+    // Décode l'image à partir de la liste de bytes.
+    final img.Image? image = img.decodeImage(imageBytes);
+
+    // Si l'image ne peut pas être décodée, retourne null.
+    if (image == null) {
+      return null;
+    }
+
+    // Redimensionne l'image.
+    final resizedImage = img.copyResize(image, width: newWidth, height: newHeight);
+
+    // Renvoie les bytes de l'image redimensionnée.
+    return img.encodePng(resizedImage);
+  }
+
+  /// Télécharge une image sur un serveur et traite la réponse.
+  ///
+  /// [imageFile] - le fichier image à télécharger.
+  Future<void> uploadImage(File imageFile) async {
     // L'URL de votre endpoint de téléchargement
-    var uri = Uri.parse('http://149.202.49.224:8000/upload_image');
+    final uri = Uri.parse('http://149.202.49.224:8000/upload_image');
 
-    // Créer une requête multipart
-    var request = http.MultipartRequest('POST', uri);
+    try {
+      // Créer et envoyer une requête multipart
+      final response = await _sendMultipartRequest(uri, imageFile);
+
+      // Traiter la réponse du serveur
+      await _handleServerResponse(response);
+    } catch (e) {
+      print('Exception lors de l\'upload de l\'image: $e');
+    }
+  }
+
+  Future<http.StreamedResponse> _sendMultipartRequest(Uri uri, File imageFile) async {
+    final request = http.MultipartRequest('POST', uri);
 
     // Ajouter le fichier à la requête
     request.files.add(await http.MultipartFile.fromPath(
@@ -87,45 +137,45 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
       filename: path.basename(imageFile.path), // le nom du fichier à envoyer
     ));
 
-    // Envoyer la requête
-    var response = await request.send();
-    var responseBody = await response.stream.transform(utf8.decoder).join();
-    print(responseBody);
-    var responseBodyDict = jsonDecode(responseBody);
-    total = responseBodyDict['total'];
-    total_banknotes = responseBodyDict['total_banknotes'];
-    count_banknotes = responseBodyDict['count_banknotes'];
-    banknotes = Map<String, dynamic>.from(responseBodyDict['all_banknotes']);
-    total_coins = responseBodyDict['total_coins'];
-    count_coins = responseBodyDict['count_coins'];
-    coins = Map<String, dynamic>.from(responseBodyDict['all_coins']);
-    total_cheques = responseBodyDict['total_cheques'];
-    count_cheques = responseBodyDict['count_cheques'];
+    return await request.send();
+  }
 
-    for (var entry in coins.entries) {
-      if(entry.value != 0) {
-        Map<String, dynamic> entries = new Map<String, dynamic>();
-        entries['genre'] = entry.key;
-        entries['sold'] = entry.value;
-        dataChart.add(entries);
-      }
-    }
-    for (var entry in banknotes.entries) {
-      if(entry.value != 0) {
-        Map<String, dynamic> entries = new Map<String, dynamic>();
-        entries['genre'] = entry.key;
-        entries['sold'] = entry.value;
-        dataChart.add(entries);
-      }
-    }
-
-    // Vérifier la réponse
+  Future<void> _handleServerResponse(http.StreamedResponse response) async {
     if (response.statusCode == 200) {
-      _isProcess = false;
       print('Upload successful');
+
+      // Extraire les informations de la réponse
+      final responseBody = await response.stream.transform(utf8.decoder).join();
+      _extractResponseData(jsonDecode(responseBody));
+
+      _isProcess = false;
       setState(() {});
     } else {
       print('Upload failed with status: ${response.statusCode}');
+    }
+  }
+
+  void _extractResponseData(Map<String, dynamic> responseBody) {
+    total = responseBody['total'];
+    totalBanknotes = responseBody['total_banknotes'];
+    countBanknotes = responseBody['count_banknotes'];
+    banknotes = Map<String, dynamic>.from(responseBody['all_banknotes']);
+    totalCoins = responseBody['total_coins'];
+    countCoins = responseBody['count_coins'];
+    coins = Map<String, dynamic>.from(responseBody['all_coins']);
+    totalCheques = responseBody['total_cheques'];
+    countCheques = responseBody['count_cheques'];
+
+    _extractCoinsAndBanknotes(coins);
+    _extractCoinsAndBanknotes(banknotes);
+  }
+
+  void _extractCoinsAndBanknotes(Map<String, dynamic> items) {
+    for (var entry in items.entries) {
+      if (entry.value != 0) {
+        Map<String, dynamic> entries = {'genre': entry.key, 'sold': entry.value};
+        dataChart.add(entries);
+      }
     }
   }
 
@@ -261,6 +311,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
       });
     }
   }
+
   /// valide la prise de la photo
   void _confirm() async {
     await _stopLiveFeed();
@@ -432,37 +483,25 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: ElevatedButton(
-            child: Text('Image depuis la galerie'),
-            onPressed: () => _getImage(ImageSource.gallery),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color.fromARGB(255, 252,183,94), // background
+              foregroundColor: Colors.white, // foreground
+            ),
+            child: Text('Prendre une photo'),
+              onPressed: () => _switchScreenMode(),
           ),
         ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: ElevatedButton(
-            child: Text('Prendre une photo'),
-            onPressed: () => _switchScreenMode(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color.fromARGB(255, 130,71,207), // background
+              foregroundColor: Colors.white, // foreground
+            ),
+            child: Text('Image depuis la galerie'),
+            onPressed: () => _getImage(ImageSource.gallery),
           ),
         ),
-        /*// TODO: mettre l'historisation du dashboard ou l'afficher en dessous de ces boutons
-        if (_image != null)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-                '${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
-          ),*/
-      /*_image != null
-          ? SizedBox(
-        height: 400,
-        width: 400,
-        child: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            Image.file(_image!),
-            if (widget.customPaint != null) widget.customPaint!,
-          ],
-        ),
-      )*/
-
     ]);
   }
 
@@ -517,7 +556,9 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                     ),
                   if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement
                     Center(
-                      child: CircularProgressIndicator(),
+                      child: CircularProgressIndicator(
+                        color: Color.fromARGB(255, 130,71,207),
+                      ),
                     ), // Si isProcessing est true, affichez le spinner de chargement
                   if(_isProcess == false) Align(
                     alignment: Alignment.bottomCenter,
@@ -553,65 +594,156 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.payments_outlined, size: 36),
-                title: Text("Montant des billets: ${total_banknotes.isNotEmpty ? '${total_banknotes}€' : 'N/A'}"),
-                subtitle: Text("Nombre de billets: ${count_banknotes.isNotEmpty ? count_banknotes : 'N/A'}"),
+                title: Text("Montant des billets: ${totalBanknotes.isNotEmpty ? '$totalBanknotes €' : 'N/A'}"),
+                subtitle: Text("Nombre de billets: ${countBanknotes.isNotEmpty ? countBanknotes : 'N/A'}"),
               ),
             ),
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.paid_outlined, size: 36),
-                title: Text("Montant des pièces: ${total_coins.isNotEmpty ? '${total_coins}€' : 'N/A'}"),
-                subtitle: Text("Nombre de pièces: ${count_coins.isNotEmpty ? count_coins : 'N/A'}"),
+                title: Text("Montant des pièces: ${totalCoins.isNotEmpty ? '$totalCoins €' : 'N/A'}"),
+                subtitle: Text("Nombre de pièces: ${countCoins.isNotEmpty ? countCoins : 'N/A'}"),
               ),
             ),
             if(_isProcess == false) Card(
                 child: ListTile(
                     leading: Icon(Icons.request_quote_outlined, size: 36),
-                    title: Text("Montant des chèques: ${total_cheques.isNotEmpty ? '${total_cheques}€' : 'N/A'}"),
-                    subtitle: Text("Nombre de chèques: ${count_cheques.isNotEmpty ? total_cheques : 'N/A'}")
+                    title: Text("Montant des chèques: ${totalCheques.isNotEmpty ? '$totalCheques€' : 'N/A'}"),
+                    subtitle: Text("Nombre de chèques: ${countCheques.isNotEmpty ? totalCheques : 'N/A'}")
                 )
             ),
             if(_isProcess == false) Container(
               margin: const EdgeInsets.only(top: 10),
               width: 350,
               height: 300,
-              child: Chart(
-                data: dataChart,
-                variables: {
-                  'genre': Variable(
-                    accessor: (Map map) => map['genre'] as String
-                  ),
-                  'sold': Variable(
-                    accessor: (Map map) => map['sold'] as num
-                  ),
-                },
-                transforms: [
-                  Proportion( // faire une somme des montants
-                    variable: 'sold',
-                    as: 'percent',
-                  )
-                ],
-                marks: [
-                  IntervalMark(
-                    position: Varset('percent') / Varset('genre'),
-                    label: LabelEncode(
-                      encoder: (tuple) => Label(
-                        "qte: ${tuple['sold'].toString()}\n"
-                            "${tuple['genre'].toString()}",
-                        LabelStyle(textStyle: Defaults.runeStyle),
-                      ),
+              child: Screenshot(
+                controller: screenshotController,
+                child: Chart(
+                  data: dataChart,
+                  variables: {
+                    'genre': Variable(
+                        accessor: (Map map) => map['genre'] as String
                     ),
-                    color: ColorEncode(
-                        variable: 'genre', values: Defaults.colors10),
-                    modifiers: [StackModifier()],
-                  )
-                ],
-                coord: PolarCoord(transposed: true, dimCount: 1),
-              ),
+                    'sold': Variable(
+                        accessor: (Map map) => map['sold'] as num
+                    ),
+                  },
+                  transforms: [
+                    Proportion( // faire une somme des montants
+                      variable: 'sold',
+                      as: 'percent',
+                    )
+                  ],
+                  marks: [
+                    IntervalMark(
+                      position: Varset('percent') / Varset('genre'),
+                      label: LabelEncode(
+                        encoder: (tuple) => Label(
+                          "qte: ${tuple['sold'].toString()}\n"
+                              "${tuple['genre'].toString()}",
+                          LabelStyle(textStyle: Defaults.runeStyle),
+                        ),
+                      ),
+                      color: ColorEncode(
+                          variable: 'genre', values: chartColor),
+                      modifiers: [StackModifier()],
+                    )
+                  ],
+                  coord: PolarCoord(transposed: true, dimCount: 1),
+                ),
+              )
             ),
+            if(_isProcess == false) ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color.fromARGB(255, 130,71,207),  // Changer la couleur de l'arrière-plan ici
+              ),
+              child: Text(
+                'Télécharger au format Excel',
+                style: TextStyle(color: Colors.white),  // Changer la couleur du texte ici
+              ),
+              onPressed: () {
+                _downloadExcel(context);
+              },
+            )
           ],
         ),
       ),
+    );
+  }
+
+  /// Télécharge un fichier Excel avec des données de tableau et une capture d'écran d'un widget.
+  ///
+  /// [context] - Le contexte BuildContext dans lequel la fonction est appelée.
+  Future<void> _downloadExcel(BuildContext context) async {
+    // Créer un nouveau document Excel et accéder à la première feuille de calcul.
+    final xlsx.Workbook workbook = xlsx.Workbook();
+    final xlsx.Worksheet sheet = workbook.worksheets[0];
+
+    // Ajouter les en-têtes dans le fichier Excel
+    _addHeaders(sheet);
+
+    // Ajouter les données dans le fichier Excel
+    _addData(sheet);
+
+    // Ajouter une capture d'écran d'un widget au fichier Excel
+    await _addScreenshot(sheet);
+
+    // Enregistrer et sauvegarder le fichier Excel
+    _saveWorkbook(workbook);
+
+    // Afficher un dialogue indiquant que le téléchargement est terminé
+    _showDownloadCompletedDialog(context);
+  }
+
+  void _addHeaders(xlsx.Worksheet sheet) {
+    sheet.getRangeByName('A1').setText('Devise');
+    sheet.getRangeByName('B1').setText('Quantité');
+  }
+
+  void _addData(xlsx.Worksheet sheet) {
+    for (int i = 0; i < dataChart.length; i++) {
+      sheet.getRangeByName("A${i+2}").setText(dataChart[i]['genre'].toString());
+      sheet.getRangeByName("B${i+2}").setText(dataChart[i]['sold'].toString());
+    }
+  }
+
+  Future<void> _addScreenshot(xlsx.Worksheet sheet) async {
+    final Uint8List? imageBytes = await screenshotController.capture();
+    if (imageBytes != null) {
+      final Uint8List? resizedImageBytes = await resizeImage(imageBytes, 300, 250);
+      sheet.pictures.addStream(
+        2,  // ligne
+        3,  // colonne
+        resizedImageBytes!,
+      );
+    }
+  }
+
+  void _saveWorkbook(xlsx.Workbook workbook) {
+    final List<int> bytes = workbook.saveAsStream();
+    workbook.dispose();
+
+    Uint8List utf8bytes = Uint8List.fromList(bytes);
+    DocumentFileSavePlus().saveFile(utf8bytes, "test.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  }
+
+  void _showDownloadCompletedDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Téléchargement terminé"),
+          content: Text("Le fichier a été téléchargé avec succès."),
+          actions: <Widget>[
+            TextButton(
+              child: Text("Fermer"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -716,37 +848,44 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     widget.onImage(inputImage);
   }
 
-  /// Transforme l'image de la caméra en image statique.
+  /// Transformer l'image de la caméra en image statique.
+  ///
+  /// [image] - L'image provenant de la caméra.
   InputImage? _inputImageFromCameraImage(CameraImage image) {
-    // get camera rotation
+
+    // Récupère l'orientation du capteur de la caméra.
     final camera = cameras[_cameraIndex];
-    final rotation =
-    InputImageRotationValue.fromRawValue(camera.sensorOrientation);
+    final rotation = InputImageRotationValue.fromRawValue(camera.sensorOrientation);
+
+    // Si l'orientation du capteur n'est pas détectée, retourne null.
     if (rotation == null) return null;
 
-    // get image format
+    // Récupère le format de l'image.
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    // validate format depending on platform
-    // only supported formats:
-    // * nv21 for Android
-    // * bgra8888 for iOS
+
+    // Si le format de l'image n'est pas détecté, ou si le format ne correspond pas
+    // aux formats supportés (nv21 pour Android, bgra8888 pour iOS), retourne null.
     if (format == null ||
         (Platform.isAndroid && format != InputImageFormat.nv21) ||
         (Platform.isIOS && format != InputImageFormat.bgra8888)) return null;
 
-    // since format is constraint to nv21 or bgra8888, both only have one plane
+    // Si l'image ne comporte pas exactement une seule plane, retourne null.
+    // Les formats nv21 et bgra8888 ont tous deux une seule plane.
     if (image.planes.length != 1) return null;
+
+    // Récupère la première (et unique) plane de l'image.
     final plane = image.planes.first;
 
-    // compose InputImage using bytes
+    // Construit une InputImage à partir des bytes de la plane, avec les métadonnées appropriées.
     return InputImage.fromBytes(
       bytes: plane.bytes,
       metadata: InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: rotation, // used only in Android
-        format: format, // used only in iOS
-        bytesPerRow: plane.bytesPerRow, // used only in iOS
+        rotation: rotation, // utilisé seulement sur Android
+        format: format, // utilisé seulement sur iOS
+        bytesPerRow: plane.bytesPerRow, // utilisé seulement sur iOS
       ),
     );
   }
+
 }
