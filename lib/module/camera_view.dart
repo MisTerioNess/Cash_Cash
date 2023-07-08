@@ -6,7 +6,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:graphic/graphic.dart';
@@ -26,7 +25,6 @@ class CameraView extends StatefulWidget {
       {Key? key,
         required this.title,
         required this.customPaint,
-        required this.customPaintText,
         this.text,
         required this.onImage,
         required this.resetCustomPaint,
@@ -37,7 +35,6 @@ class CameraView extends StatefulWidget {
 
   final String title;
   final CustomPaint? customPaint;
-  final CustomPaint? customPaintText;
   final String? text;
   final Function(InputImage inputImage) onImage;
   final Function(CustomPaint customPaint) resetCustomPaint;
@@ -146,44 +143,6 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
       filename: path.basename(imageFile.path), // le nom du fichier à envoyer
     ));
     
-    // Envoyer la requête
-    var response = await request.send();
-    var responseBody = await response.stream.transform(utf8.decoder).join();
-    print(responseBody);
-    var responseBodyDict = jsonDecode(responseBody);
-    total = responseBodyDict['total'];
-    total_banknotes = responseBodyDict['total_banknotes'];
-    count_banknotes = responseBodyDict['count_banknotes'];
-    banknotes = Map<String, dynamic>.from(responseBodyDict['all_banknotes']);
-    total_coins = responseBodyDict['total_coins'];
-    count_coins = responseBodyDict['count_coins'];
-    coins = Map<String, dynamic>.from(responseBodyDict['all_coins']);
-    total_cheques = responseBodyDict['total_cheques'];
-    count_cheques = responseBodyDict['count_cheques'];
-    imgCheques = responseBodyDict['img_cheques'];
-
-
-    for (var entry in coins.entries) {
-      if(entry.value != 0) {
-        Map<String, dynamic> entries = new Map<String, dynamic>();
-        entries['genre'] = entry.key;
-        entries['sold'] = entry.value;
-        dataChart.add(entries);
-      }
-    }
-    for (var entry in banknotes.entries) {
-      if(entry.value != 0) {
-        Map<String, dynamic> entries = new Map<String, dynamic>();
-        entries['genre'] = entry.key;
-        entries['sold'] = entry.value;
-        dataChart.add(entries);
-      }
-    }
-      Map<String, dynamic> entries = new Map<String, dynamic>();
-      entries['genre'] = 'cheque';
-      entries['sold'] = imgCheques.length;
-      dataChart.add(entries);
-    
     return await request.send();
   }
 
@@ -203,6 +162,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   }
 
   void _extractResponseData(Map<String, dynamic> responseBody) {
+    print(responseBody);
     total = responseBody['total'];
     totalBanknotes = responseBody['total_banknotes'];
     countBanknotes = responseBody['count_banknotes'];
@@ -212,6 +172,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     coins = Map<String, dynamic>.from(responseBody['all_coins']);
     totalCheques = responseBody['total_cheques'];
     countCheques = responseBody['count_cheques'];
+    imgCheques = responseBody['img_cheques'];
 
     _extractCoinsAndBanknotes(coins);
     _extractCoinsAndBanknotes(banknotes);
@@ -512,7 +473,6 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
           children: <Widget>[
             CameraPreview(_controller!),
             if (widget.customPaint != null) widget.customPaint!,
-            //if (widget.customPaintText != null) widget.customPaintText!,
           ],
         ),
       ),
@@ -650,15 +610,15 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.paid_outlined, size: 36),
-                title: Text("Montant des pièces: ${total_coins.isNotEmpty ? '$total_coins€' : 'N/A'}"),
-                subtitle: Text("Nombre de pièces: ${count_coins.isNotEmpty ? count_coins : 'N/A'}"),
+                title: Text("Montant des pièces: ${totalCoins.isNotEmpty ? '$totalCoins€' : 'N/A'}"),
+                subtitle: Text("Nombre de pièces: ${totalCoins.isNotEmpty ? totalCoins : 'N/A'}"),
               ),
             ),
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.request_quote_outlined, size: 36),
-                title: Text("Montant des chèques: ${total_cheques.isNotEmpty ? '$total_cheques€' : 'N/A'}"),
-                subtitle: Text("Nombre de chèques: ${count_cheques.isNotEmpty ? count_cheques : 'N/A'}"),
+                title: Text("Montant des chèques: ${totalCheques.isNotEmpty ? '$totalCheques€' : 'N/A'}"),
+                subtitle: Text("Nombre de chèques: ${countCheques.isNotEmpty ? countCheques : 'N/A'}"),
                 trailing: IconButton(
                   icon: Icon(Icons.add_box_outlined),
                   onPressed: () {
@@ -742,13 +702,12 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   Future showChequeDetail(XFile inputImage) async {
     String path = imgCheques[0];
 
-    if(path != null) {
-      final InputImage? inputImage = await downloadImage('http://149.202.49.224:8000/$path');
-      final recognizedText = await _textRecognizer.processImage(inputImage!);
-      print(recognizedText.text);
-      Navigator.pushNamed(context, '/chequeDetail', arguments: {'path': path, 'txt': recognizedText.text});
-      print("TAble");
-    }
+
+    final InputImage? inputImage = await downloadImage('http://149.202.49.224:8000/$path');
+    final recognizedText = await _textRecognizer.processImage(inputImage!);
+    print(recognizedText.text);
+    Navigator.pushNamed(context, '/chequeDetail', arguments: {'path': path, 'txt': recognizedText.text});
+    print("TAble");
   }
 
   /// Télécharge un fichier Excel avec des données de tableau et une capture d'écran d'un widget.

@@ -268,7 +268,7 @@ packages:
     dependency: "direct main"
     description:
       name: google_mlkit_commons
-      sha256: "42173a8ba89f386486cc5b8249e84da4a4b861daa70498373627d985eb418689"
+      sha256: "42c31500be3aba08bcc2cf45d5af648affc40e46684f437b8383084657e982cf"
       url: "https://pub.dev"
     source: hosted
     version: "0.4.0"
@@ -276,7 +276,7 @@ packages:
     dependency: "direct main"
     description:
       name: google_mlkit_object_detection
-      sha256: "3828e1e53817cad4ed1e2db7bd76dc851841bb9cbe97b303f751cd400bea7541"
+      sha256: "550c5ffb9a3ca5b460593d47fcc31648e49057becb5899bef4e0ff737524021e"
       url: "https://pub.dev"
     source: hosted
     version: "0.8.0"
