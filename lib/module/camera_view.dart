@@ -6,7 +6,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_commons/google_mlkit_commons.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:graphic/graphic.dart';
 import 'package:document_file_save_plus/document_file_save_plus.dart';
@@ -61,6 +61,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   double _baseScaleFactor = 1.0;
   late final AnimationController _animationController;
   late final Animation<double> _animation;
+
   bool _isProcess = false;
 
   late String total;
@@ -73,6 +74,11 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   late String totalCheques;
   late String countCheques;
   List<Map<String, dynamic>> dataChart = [];
+
+  List imgCheques = [];
+
+  final TextRecognizer _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+
   List<Color> chartColor = [
     const Color.fromARGB(255, 252,183,94),
     const Color.fromARGB(255, 130,71,207),
@@ -136,7 +142,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
       imageFile.path,
       filename: path.basename(imageFile.path), // le nom du fichier à envoyer
     ));
-
+    
     return await request.send();
   }
 
@@ -156,6 +162,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   }
 
   void _extractResponseData(Map<String, dynamic> responseBody) {
+    print(responseBody);
     total = responseBody['total'];
     totalBanknotes = responseBody['total_banknotes'];
     countBanknotes = responseBody['count_banknotes'];
@@ -165,6 +172,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     coins = Map<String, dynamic>.from(responseBody['all_coins']);
     totalCheques = responseBody['total_cheques'];
     countCheques = responseBody['count_cheques'];
+    imgCheques = responseBody['img_cheques'];
 
     _extractCoinsAndBanknotes(coins);
     _extractCoinsAndBanknotes(banknotes);
@@ -318,6 +326,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     setState(() {
       _showDashboard = true;
     });
+
     final path = _imageFile?.path;
     _isProcess = true;
     uploadImage(File(path!));
@@ -577,8 +586,8 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                   ),
                   if (widget.customPaint != null) widget.customPaint!,
                 ],
-              ),
             ),
+    ),
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Image(
@@ -587,7 +596,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                   height: 50, // Hauteur souhaitée
                   fit: BoxFit.contain, // Contrôle le mode d'ajustement de l'image
                 ),
-                title: Text("Montant total: ${total.isNotEmpty ? total : 'N/A'}"),
+                title: Text("Montant total: ${total.isNotEmpty ? '$total€' : 'N/A'}"),
               ),
             ),
             if(_isProcess== false) Text("Détails"),
@@ -601,16 +610,23 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.paid_outlined, size: 36),
-                title: Text("Montant des pièces: ${totalCoins.isNotEmpty ? '$totalCoins €' : 'N/A'}"),
-                subtitle: Text("Nombre de pièces: ${countCoins.isNotEmpty ? countCoins : 'N/A'}"),
+                title: Text("Montant des pièces: ${totalCoins.isNotEmpty ? '$totalCoins€' : 'N/A'}"),
+                subtitle: Text("Nombre de pièces: ${totalCoins.isNotEmpty ? totalCoins : 'N/A'}"),
               ),
             ),
             if(_isProcess == false) Card(
-                child: ListTile(
-                    leading: Icon(Icons.request_quote_outlined, size: 36),
-                    title: Text("Montant des chèques: ${totalCheques.isNotEmpty ? '$totalCheques€' : 'N/A'}"),
-                    subtitle: Text("Nombre de chèques: ${countCheques.isNotEmpty ? totalCheques : 'N/A'}")
-                )
+              child: ListTile(
+                leading: Icon(Icons.request_quote_outlined, size: 36),
+                title: Text("Montant des chèques: ${totalCheques.isNotEmpty ? '$totalCheques€' : 'N/A'}"),
+                subtitle: Text("Nombre de chèques: ${countCheques.isNotEmpty ? countCheques : 'N/A'}"),
+                trailing: IconButton(
+                  icon: Icon(Icons.add_box_outlined),
+                  onPressed: () {
+                    // Votre fonction à exécuter lorsque l'icône est pressée
+                    showChequeDetail(_imageFile!);
+                  },
+                ),
+              ),
             ),
             if(_isProcess == false) Container(
               margin: const EdgeInsets.only(top: 10),
@@ -666,9 +682,32 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
               },
             )
           ],
-        ),
       ),
-    );
+    ),);
+  }
+
+  Future<InputImage?> downloadImage(String url) async {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      final file = File('${Directory.systemTemp.path}/image.jpg');
+      await file.writeAsBytes(response.bodyBytes);
+      print('Image téléchargée avec succès : ${file.path}');
+      return InputImage.fromFilePath(file.path);
+    } else {
+      print('Échec du téléchargement de l image. Code d erreur : ${response.statusCode}');
+      return null;
+    }
+  }
+
+  Future showChequeDetail(XFile inputImage) async {
+    String path = imgCheques[0];
+
+
+    final InputImage? inputImage = await downloadImage('http://149.202.49.224:8000/$path');
+    final recognizedText = await _textRecognizer.processImage(inputImage!);
+    print(recognizedText.text);
+    Navigator.pushNamed(context, '/chequeDetail', arguments: {'path': path, 'txt': recognizedText.text});
+    print("TAble");
   }
 
   /// Télécharge un fichier Excel avec des données de tableau et une capture d'écran d'un widget.

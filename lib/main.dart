@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'module/chequeDetail.dart';
 import 'module/object_detector.dart';
 import 'package:universal_platform/universal_platform.dart';
 import 'mainWeb.dart';
@@ -37,7 +38,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      routes: {
+        '/chequeDetail': (context) => ChequeDetail()
+      },
       debugShowCheckedModeBanner: false,
       home: ObjectDetectorView(),
     );

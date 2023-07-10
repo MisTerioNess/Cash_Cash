@@ -169,7 +169,6 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
   ///
   /// [assetPath] est le chemin de l'asset au sein du bundle d'assets de Flutter.
   Future<String> _getModel(String assetPath) async {
-
     // Si la plateforme est Android
     if (io.Platform.isAndroid) {
       // Sur Android, nous pouvons accéder directement à l'asset à partir du bundle d'assets de Flutter.
@@ -195,9 +194,8 @@ class _ObjectDetectorView extends State<ObjectDetectorView> {
       // Nous écrivons ces données dans un fichier au chemin spécifié
       await file.writeAsBytes(byteData.buffer
           .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
-
+    }
     // Nous retournons le chemin du fichier
     return file.path;
   }
-
 }
