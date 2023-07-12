@@ -1,23 +1,96 @@
-// ignore_for_file: unused_field
-
-import '../main.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:google_mlkit_commons/google_mlkit_commons.dart';
+import 'package:flutter/animation.dart';
+
 import 'package:image_picker/image_picker.dart';
+
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path;
+
 import 'package:graphic/graphic.dart';
+
+import '../main.dart';
+import 'dart:typed_data';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:document_file_save_plus/document_file_save_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:image/image.dart' as img;
-import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as path;
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsx;
+
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:uuid/uuid.dart';
 
 /// Définition des mode.
 enum ScreenMode { liveFeed, gallery }
+
+/// Card pour l'historique
+class CardItem {
+  String id;
+  String date;
+  String nom;
+  String total;
+  String amountOfBills;
+  String numberOfBills;
+  String amountOfCoins;
+  String numberOfCoins;
+  String amountOfCheques;
+  String numberOfCheques;
+  bool isExpanded = false;
+
+  CardItem({
+    required this.id,
+    required this.date,
+    required this.nom,
+    required this.total,
+    required this.amountOfBills,
+    required this.numberOfBills,
+    required this.amountOfCoins,
+    required this.numberOfCoins,
+    required this.amountOfCheques,
+    required this.numberOfCheques,
+    this.isExpanded = false,
+  });
+
+  void updateNom(String newNom) {
+    nom = newNom;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'date': date,
+      'nom': nom,
+      'total': total,
+      'amountOfBills': amountOfBills,
+      'numberOfBills': numberOfBills,
+      'amountOfCoins': amountOfCoins,
+      'numberOfCoins': numberOfCoins,
+      'amountOfCheques': amountOfCheques,
+      'numberOfCheques': numberOfCheques,
+    };
+  }
+
+  factory CardItem.fromJson(Map<String, dynamic> json) {
+    return CardItem(
+      id: json['id'],
+      date: json['date'],
+      nom: json['nom'],
+      total: json['total'],
+      amountOfBills: json['amountOfBills'],
+      numberOfBills: json['numberOfBills'],
+      amountOfCoins: json['amountOfCoins'],
+      numberOfCoins: json['numberOfCoins'],
+      amountOfCheques: json['amountOfCheques'],
+      numberOfCheques: json['numberOfCheques'],
+    );
+  }
+}
 
 /// Représente une vue de la caméra.
 class CameraView extends StatefulWidget {
@@ -45,8 +118,9 @@ class CameraView extends StatefulWidget {
   State<CameraView> createState() => _CameraViewState();
 }
 
+// TODO: refactor
 /// Mise à jour de la vue avec la caméra.
-class _CameraViewState extends State<CameraView> with SingleTickerProviderStateMixin {
+class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
   ScreenMode _mode = ScreenMode.liveFeed;
   CameraController? _controller;
   XFile? _imageFile;
@@ -63,7 +137,32 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   late final Animation<double> _animation;
 
   bool _isProcess = false;
+  bool isLoading = true;
 
+  // texte d'un dashboard
+  final TextEditingController _textEditingController = TextEditingController();
+  String date = '';
+  bool _isEditing = false;
+  bool _isTextValid = true;
+  String _initialText = 'Mon cash cash';
+
+  // historique
+  List<CardItem> cards = [];
+  void fetchData() async {
+    final cardItemList = await getCardItemList();
+    setState(() {
+      cards = cardItemList;
+    });
+  }
+  Future<void> clearDataList() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    prefs.remove('dataList');
+
+    setState(() {});
+  }
+
+  // données
   late String total;
   late String totalBanknotes;
   late String countBanknotes;
@@ -147,6 +246,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     return await request.send();
   }
 
+
   Future<void> _handleServerResponse(http.StreamedResponse response) async {
     if (response.statusCode == 200) {
       print('Upload successful');
@@ -199,6 +299,103 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     widget.resetCustomPaint(cp);
   }
 
+  /// obtenir la date actuelle au format français
+  String getCurrentDate() {
+    DateTime now = DateTime.now();
+    String formattedDate = DateFormat('dd/MM/yyyy').format(now);
+
+    return formattedDate;
+  }
+
+  Future<void> addToDataList(Map<String, dynamic> newData) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Récupérer la liste existante de SharedPreferences
+    final dataListString = prefs.getString('dataList');
+    List<Map<String, dynamic>> dataList = [];
+
+    if (dataListString != null) {
+      final decodedList = jsonDecode(dataListString);
+
+      if (decodedList is List<dynamic>) {
+        dataList = decodedList.cast<Map<String, dynamic>>();
+      }
+    }
+
+    // Ajouter la nouvelle donnée à la liste
+    dataList.add(newData);
+
+    // Sauvegarder la liste mise à jour dans SharedPreferences
+    final dataListStringUpdated = jsonEncode(dataList);
+    prefs.setString('dataList', dataListStringUpdated);
+  }
+
+  Future<List<CardItem>> getCardItemList() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final dataListString = prefs.getString('dataList');
+
+    if (dataListString != null) {
+      final decodedList = jsonDecode(dataListString);
+
+      if (decodedList is List<dynamic>) {
+        return decodedList.map(
+                (item) => CardItem.fromJson(item)).toList();
+      }
+    }
+
+    return [];
+  }
+  Future<void> updateCardItem(CardItem card, String newName) async {
+    Map<String, dynamic> map = card.toJson();
+    map.update('name', (value) => newName);
+
+    setState(() {});
+  }
+
+  Future<void> updateNomInDataList(String itemId, String newNom) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final dataListString = prefs.getString('dataList');
+
+    if (dataListString != null) {
+      final decodedList = jsonDecode(dataListString);
+
+      if (decodedList is List<dynamic>) {
+        final dataList = decodedList.map((item) => CardItem.fromJson(item)).toList();
+
+        final updatedDataList = dataList.map((item) {
+          if (item.id == itemId) {
+            item.updateNom(newNom);
+          }
+          return item;
+        }).toList();
+
+        final dataListStringUpdated = jsonEncode(updatedDataList.map((item) => item.toJson()).toList());
+        await prefs.setString('dataList', dataListStringUpdated);
+      }
+    }
+  }
+
+  Future<void> removeCardFromDataList(String itemId) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final dataListString = prefs.getString('dataList');
+
+    if (dataListString != null) {
+      final decodedList = jsonDecode(dataListString);
+
+      if (decodedList is List<dynamic>) {
+        final dataList = decodedList.map((item) => CardItem.fromJson(item)).toList();
+
+        cards.removeWhere((item) => item.id == itemId);
+        dataList.removeWhere((item) => item.id == itemId);
+
+        final dataListStringUpdated = jsonEncode(dataList.map((item) => item.toJson()).toList());
+        prefs.setString('dataList', dataListStringUpdated);
+      }
+    }
+
+    setState(() {});
+  }
+
   /// Initialisation de l'état de base.
   @override
   void initState() {
@@ -211,6 +408,10 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     _animation = Tween<double>(begin: 0, end: 8).animate(_animationController);
 
     _imagePicker = ImagePicker();
+
+    // historisation
+    this.date = getCurrentDate();
+    fetchData();
 
     if (cameras.any(
           (element) =>
@@ -242,6 +443,9 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
   @override
   void dispose() {
     _stopLiveFeed();
+    _animationController.dispose();
+    _textEditingController.dispose();
+    clearDataList();
     super.dispose();
   }
 
@@ -333,6 +537,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     });
 
     final path = _imageFile?.path;
+    print("path: ${path}");
     _isProcess = true;
     uploadImage(File(path!));
   }
@@ -486,37 +691,59 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
 
   /// Affiche la galerie
   Widget _galleryBody() {
-    return ListView(shrinkWrap: true, children: [
-      _imageFile != null ?
-        _dashboard()
+    return CustomScrollView(
+      slivers: [
+        _imageFile != null
+        ?
+          _dashboard()
         :
-        Icon(
-          Icons.euro,
-          size: 250,
+        SliverToBoxAdapter(
+          child: Image.asset(
+            'assets/cc_icon_t.png',
+            width: 300.0,
+            height: 300.0,
+          ),
         ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color.fromARGB(255, 252,183,94), // background
-              foregroundColor: Colors.white, // foreground
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0.0),
+            child: ElevatedButton(
+              child: Text('Image depuis la galerie'),
+              onPressed: () => _getImage(ImageSource.gallery),
             ),
-            child: Text('Prendre une photo'),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: ElevatedButton(
+              child: Text('Prendre une photo'),
               onPressed: () => _switchScreenMode(),
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color.fromARGB(255, 130,71,207), // background
-              foregroundColor: Colors.white, // foreground
             ),
-            child: Text('Image depuis la galerie'),
-            onPressed: () => _getImage(ImageSource.gallery),
           ),
         ),
-    ]);
+        SliverToBoxAdapter(
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Text("Historique", style: TextStyle(fontSize: 20)),
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: ElevatedButton(
+            child: Text("️supprimer l'historique",
+                style: TextStyle(color: Colors.white)
+            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => clearDataList()
+          )
+        ),
+        SliverFillRemaining(
+          child: _historisation()
+        ),
+      ],
+    );
   }
 
   /// Affiche le tableau de bord
@@ -544,6 +771,25 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                   _mode = ScreenMode.gallery;
                   _galleryBody();
                   _returnToGallery();
+
+                  final uuid = Uuid();
+                  final String id = uuid.v4();
+                  // historisation
+                  Map<String, dynamic> objHistorisation = {
+                    'id': id.toString(),
+                    'date': date,
+                    'nom': _initialText,
+                    'total': total,
+                    'amountOfBills': totalBanknotes,
+                    'numberOfBills': countBanknotes,
+                    'amountOfCoins': totalCoins,
+                    'numberOfCoins': countCoins,
+                    'amountOfCheques': totalCheques,
+                    'numberOfCheques': countCheques
+                  };
+                  addToDataList(objHistorisation);
+                  fetchData();
+
                   print("tap");
                 },
                 child: Icon(Icons.view_cozy_outlined, opticalSize: 48),
@@ -591,8 +837,8 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                   ),
                   if (widget.customPaint != null) widget.customPaint!,
                 ],
+              ),
             ),
-    ),
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Image(
@@ -601,10 +847,11 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                   height: 50, // Hauteur souhaitée
                   fit: BoxFit.contain, // Contrôle le mode d'ajustement de l'image
                 ),
-                title: Text("Montant total: ${total.isNotEmpty ? '$total€' : 'N/A'}"),
+                title: Text("Montant total: ${total.isNotEmpty ? '$total €' : 'N/A'}"),
               ),
             ),
-            if(_isProcess == false) Text("Détails"),
+            if(_isProcess == false) _editableText(),
+            if(_isProcess== false) Text("Détails"),
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.payments_outlined, size: 36),
@@ -615,14 +862,14 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.paid_outlined, size: 36),
-                title: Text("Montant des pièces: ${totalCoins.isNotEmpty ? '$totalCoins€' : 'N/A'}"),
+                title: Text("Montant des pièces: ${totalCoins.isNotEmpty ? '$totalCoins €' : 'N/A'}"),
                 subtitle: Text("Nombre de pièces: ${countCoins.isNotEmpty ? countCoins : 'N/A'}"),
               ),
             ),
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.request_quote_outlined, size: 36),
-                title: Text("Montant des chèques: ${totalCheques.isNotEmpty ? '$totalCheques€' : 'N/A'}"),
+                title: Text("Montant des chèques: ${totalCheques.isNotEmpty ? '$totalCheques €' : 'N/A'}"),
                 subtitle: Text("Nombre de chèques: ${countCheques.isNotEmpty ? countCheques : 'N/A'}"),
                 trailing: IconButton(
                   icon: Icon(Icons.add_box_outlined),
@@ -691,7 +938,8 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
             )
           ],
       ),
-    ),);
+    ),
+    );
   }
 
   Future<InputImage?> downloadImage(String url) async {
@@ -785,6 +1033,164 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
               },
             ),
           ],
+        );
+      },
+    );
+  }
+
+  /// Widget permettant de modifier le texte du dashboard en cours
+  Widget _editableText() {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isEditing = true;
+        });
+      },
+      child: Row(
+        children: [
+          Expanded(
+            child: _isEditing
+                ? TextField(
+              controller: _textEditingController,
+              maxLength: 20,
+              onChanged: (value) {
+                setState(() {
+                  _isTextValid = value.isNotEmpty;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'Entrez un texte',
+              ),
+            )
+                : Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 20.0),
+                  child: Text(
+                    '${this.date} - ${_initialText}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                if (!_isEditing)
+                  IconButton(
+                    icon: Icon(Icons.edit),
+                    onPressed: () {
+                      setState(() {
+                        _isEditing = true;
+                      });
+                    },
+                  ),
+              ],
+            ),
+          ),
+          if (_isEditing)
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.check),
+                  onPressed: _isTextValid
+                      ? () {
+                          setState(() {
+                            _initialText = _textEditingController.text;
+                            _isEditing = false;
+                          });
+                        }
+                      : null,
+                ),
+                IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: () {
+                    setState(() {
+                      _isEditing = false;
+                    });
+                  },
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Widget affichant l'historique dans la gallerie
+  Widget _historisation() {
+    ScrollController _scrollController = ScrollController();
+
+    _scrollController.addListener(() {
+      setState(() {
+        if (_scrollController.position.pixels == 0.0) {
+          _scrollController.animateTo(
+            0,
+            duration: Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    });
+
+    return ListView.builder(
+      controller: _scrollController,
+      itemCount: cards.length,
+      itemBuilder: (context, index) {
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              cards[index].isExpanded = !cards[index].isExpanded;
+            });
+          },
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${cards[index].date} - ${cards[index].nom}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 5.0),
+                        child: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: FittedBox(
+                            child: FloatingActionButton(
+                              backgroundColor: Color.fromARGB(255, 255, 0, 0),
+                              onPressed: () {
+                                removeCardFromDataList(cards[index].id);
+                                //fetchData();
+                              },
+                              child: Icon(Icons.delete, size: 40),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ]
+                  ),
+                  SizedBox(height: 8),
+                  if (cards[index].isExpanded) ...[
+                    Text('montant total: ${cards[index].total}'),
+                    SizedBox(height: 8),
+                    Text('Montant des billets: ${cards[index].amountOfBills}'),
+                    Text('Nombre de billets: ${cards[index].numberOfBills}'),
+                    SizedBox(height: 8),
+                    Text('Montant des pièces: ${cards[index].amountOfCoins}'),
+                    Text('Nombre de pièces: ${cards[index].numberOfCoins}'),
+                    SizedBox(height: 8),
+                    Text('Montant des chèques: ${cards[index].amountOfCheques}'),
+                    Text('Nombre de chèques: ${cards[index].numberOfCheques}'),
+                  ],
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
