@@ -1,4 +1,3 @@
-import 'package:universal_html/html.dart' as html1;
 import 'package:graphic/graphic.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
@@ -6,12 +5,13 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsx;
-import 'package:document_file_save_plus/document_file_save_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:image/image.dart' as img;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:excel/excel.dart';
 
 Dio dio = Dio();
 
@@ -95,7 +95,10 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
   }
 
   void send() async {
-    _isProcess = true;
+    setState(() {
+      _isProcess = true;
+    });
+
     if (_imageFile == null) {
       print('No image selected.');
       return;
@@ -122,15 +125,15 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
 
       if (response.statusCode == 200) {
         var responseBody = await response.stream.transform(utf8.decoder).join();
-        _isProcess = false;
+        setState(() {
+          _imageFile = null;
+          _isProcess = false;
+          _isFinished = true;
+          _isUpload = true;
+        });
         Map<String, dynamic> json = jsonDecode(responseBody);
-        /*print(list);
-        String responseBodyQuotes = list[0].replaceAll('"', '');
-        print(responseBodyQuotes);
-        Map<String, dynamic> json = list[1];
-        _isFinished = true;
-        _isUpload = true;
-        _extractResponseData(json);*/
+        print(json);
+        _extractResponseData(json);
         String imgUrl = json["img"];
         print(responseBody);
 
@@ -175,8 +178,8 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     coins = Map<String, dynamic>.from(json['all_coins']);
     totalCheques = json['total_cheques'];
     countCheques = json['count_cheques'];
-    _isExcelOk = true;
-    _imageFile = null;
+    // _isExcelOk = true;
+    // _imageFile = null;
 
     _extractCoinsAndBanknotes(coins);
     _extractCoinsAndBanknotes(banknotes);
@@ -194,8 +197,9 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
   }
   Future<void> _downloadExcel(BuildContext context) async {
     // Créer un nouveau document Excel et accéder à la première feuille de calcul.
-    final xlsx.Workbook workbook = xlsx.Workbook();
-    final xlsx.Worksheet sheet = workbook.worksheets[0];
+    final excel = Excel.createExcel();
+    final sheet = excel['Sheet1'];
+    excel['Sheet1'].isRTL = false;
 
     // Ajouter les en-têtes dans le fichier Excel
     _addHeaders(sheet);
@@ -204,45 +208,43 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     _addData(sheet);
 
     // Ajouter une capture d'écran d'un widget au fichier Excel
-    await _addScreenshot(sheet);
+    //await _addScreenshot(sheet);
 
     // Enregistrer et sauvegarder le fichier Excel
-    _saveWorkbook(workbook);
+    _saveWorkbook(excel);
 
     // Afficher un dialogue indiquant que le téléchargement est terminé
     _showDownloadCompletedDialog(context);
   }
 
-  void _addHeaders(xlsx.Worksheet sheet) {
-    sheet.getRangeByName('A1').setText('Devise');
-    sheet.getRangeByName('B1').setText('Quantité');
+  void _addHeaders(Sheet sheet) {
+    sheet.cell(CellIndex.indexByString("A1")).value = 'Devise';
+    sheet.cell(CellIndex.indexByString("B1")).value = 'Quantité';
   }
 
-  void _addData(xlsx.Worksheet sheet) {
+  void _addData(Sheet sheet) {
+    print(dataChart);
+    print(dataChart.length);
     for (int i = 0; i < dataChart.length; i++) {
-      sheet.getRangeByName("A${i+2}").setText(dataChart[i]['genre'].toString());
-      sheet.getRangeByName("B${i+2}").setText(dataChart[i]['sold'].toString());
+      sheet.cell(CellIndex.indexByString("A${i+2}")).value = dataChart[i]['genre'].toString();
+      sheet.cell(CellIndex.indexByString("B${i+2}")).value = dataChart[i]['sold'].toString();
     }
   }
 
-  Future<void> _addScreenshot(xlsx.Worksheet sheet) async {
+  /*Future<void> _addScreenshot(Sheet sheet) async {
     final Uint8List? imageBytes = await screenshotController.capture();
     if (imageBytes != null) {
       final Uint8List? resizedImageBytes = await resizeImage(imageBytes, 300, 250);
-      sheet.pictures.addStream(
+      sheet.(
         2,  // ligne
         3,  // colonne
         resizedImageBytes!,
       );
     }
-  }
+  }*/
 
-  void _saveWorkbook(xlsx.Workbook workbook) {
-    final List<int> bytes = workbook.saveAsStream();
-    workbook.dispose();
-
-    launchUrl(
-        "data:application/octet-stream;charset=utf-16le;base64,${base64.encode(bytes)}" as Uri);
+  void _saveWorkbook(Excel excel) {
+    excel.save();
   }
 
   void _showDownloadCompletedDialog(BuildContext context) {
@@ -292,11 +294,8 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     _animation = Tween<double>(begin: 0, end: 8).animate(_animationController);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if(_showDashboard == true){
-      return _dashboard();}
-    else{return Scaffold(
+  Widget _img() {
+    return Scaffold(
       appBar: AppBar(
         centerTitle: true,
         title: const Text("Cash Cash"),
@@ -413,7 +412,16 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );}
 
+
+  @override
+  Widget build(BuildContext context) {
+    if(_showDashboard == true){
+      return _dashboard();
+    } else {
+      return _img();
+    }
   }
+
   Widget _dashboard() {
     return Scaffold(
       appBar: AppBar(
@@ -439,31 +447,31 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
               child: Stack(
                 fit: StackFit.expand,
                 children: <Widget>[
-                  if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement et le filtre blanc
-                    Container(
-                      color: Colors.white.withOpacity(0.5), // Couleur blanche avec opacité de 10%
-                    ),
-                  if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement
-                    Center(
-                      child: CircularProgressIndicator(
-                        color: Color.fromARGB(255, 130,71,207),
-                      ),
-                    ), // Si isProcessing est true, affichez le spinner de chargement
-                  if(_isProcess == false) Align(
-                    alignment: Alignment.bottomCenter,
-                    child: AnimatedBuilder(
-                      animation: _animation,
-                      builder: (BuildContext context, Widget? child) {
-                        return Transform.translate(
-                          offset: Offset(0, -_animation.value),
-                          child: child,
-                        );
-                      },
-                      child: Icon(Icons.arrow_downward, // Icône animé
-                          color: Color.fromARGB(255, 247,115,127),
-                          size: 50.0),
-                    ),
-                  ),
+                  // if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement et le filtre blanc
+                  //   Container(
+                  //     color: Colors.white.withOpacity(0.5), // Couleur blanche avec opacité de 10%
+                  //   ),
+                  // if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement
+                  //   Center(
+                  //     child: CircularProgressIndicator(
+                  //       color: Color.fromARGB(255, 130,71,207),
+                  //     ),
+                  //   ), // Si isProcessing est true, affichez le spinner de chargement
+                  // if(_isProcess == false) Align(
+                  //   alignment: Alignment.bottomCenter,
+                  //   child: AnimatedBuilder(
+                  //     animation: _animation,
+                  //     builder: (BuildContext context, Widget? child) {
+                  //       return Transform.translate(
+                  //         offset: Offset(0, -_animation.value),
+                  //         child: child,
+                  //       );
+                  //     },
+                  //     child: Icon(Icons.arrow_downward, // Icône animé
+                  //         color: Color.fromARGB(255, 247,115,127),
+                  //         size: 50.0),
+                  //   ),
+                  // ),
                 ],
               ),
             ),
@@ -541,18 +549,6 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                   ),
                 )
             ),
-            // if(_isProcess == false) ElevatedButton(
-            //   style: ElevatedButton.styleFrom(
-            //     backgroundColor: Color.fromARGB(255, 130,71,207),  // Changer la couleur de l'arrière-plan ici
-            //   ),
-            //   child: Text(
-            //     'Télécharger au format Excel',
-            //     style: TextStyle(color: Colors.white),  // Changer la couleur du texte ici
-            //   ),
-            //   onPressed: () {
-            //     _downloadExcel(context);
-            //   },
-            // )
           ],
         ),
       ),
@@ -626,7 +622,10 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
           );
         },
         child: FloatingActionButton(
-          onPressed: pickImage,
+          onPressed: (() {
+            _showDashboard = false;
+            pickImage();
+          }),
           backgroundColor: Color.fromARGB(255, 252, 183, 94),
           child: const Icon(Icons.image_outlined),
           tooltip: 'Pick Image',
