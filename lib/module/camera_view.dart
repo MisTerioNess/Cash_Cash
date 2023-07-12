@@ -278,7 +278,6 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
     }
   }
 
-
   /// prendre une photo de la caméra
   Future<void> _takePhoto() async {
     if (_controller?.value.isInitialized == false) {
@@ -590,7 +589,7 @@ class _CameraViewState extends State<CameraView> with SingleTickerProviderStateM
                 title: Text("Montant total: ${total.isNotEmpty ? total : 'N/A'}"),
               ),
             ),
-            if(_isProcess== false) Text("Détails"),
+            if(_isProcess == false) Text("Détails"),
             if(_isProcess == false) Card(
               child: ListTile(
                 leading: Icon(Icons.payments_outlined, size: 36),
