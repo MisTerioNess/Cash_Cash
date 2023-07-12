@@ -53,6 +53,7 @@ dependencies:
   screenshot: ^2.1.0
   intl: ^0.18.0 # import 'package:intl/intl.dart';
   shared_preferences: ^2.2.0 # import 'package:shared_preferences/shared_preferences.dart';
+  uuid: ^3.0.5
 
 flutter_icons:
   image_path: "assets/cc_icon.png"
@@ -71,5 +72,3 @@ flutter:
     - assets/cc_icon.png
     - assets/ml/bob.tflite
     - assets/cc_icon_t.png
-    - assets/ml/object_labeler.tflite
-
