@@ -39,8 +39,18 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      routes: {
-        '/chequeDetail': (context) => ChequeDetail()
+      onGenerateRoute: (settings) {
+        // If you push the name like '/chequeDetail'
+        if (settings.name == '/chequeDetail') {
+          final arguments = settings.arguments as Map<String, dynamic>;
+          final int id = arguments["id"];
+          final String imageFile = arguments["path"];
+          final String recognizedText = arguments["txt"];
+          List imgCheques = arguments["imgCheques"];
+          return MaterialPageRoute(
+            builder: (context) => ChequeDetail(imgCheques: imgCheques, id: id, imageFile: imageFile, recognizedText: recognizedText), // Assurez-vous que ChequeDetail prend un paramètre id
+          );
+        }
       },
       debugShowCheckedModeBanner: false,
       home: ObjectDetectorView(),

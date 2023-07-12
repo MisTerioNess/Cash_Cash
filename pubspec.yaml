@@ -54,6 +54,9 @@ dependencies:
   intl: ^0.18.0 # import 'package:intl/intl.dart';
   shared_preferences: ^2.2.0 # import 'package:shared_preferences/shared_preferences.dart';
   uuid: ^3.0.5
+  excel: ^2.1.0
+  universal_html: ^2.2.3
+  url_launcher: ^6.1.12
 
 flutter_icons:
   image_path: "assets/cc_icon.png"

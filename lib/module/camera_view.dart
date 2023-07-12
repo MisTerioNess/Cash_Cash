@@ -172,6 +172,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
   late Map<String, dynamic> coins;
   late String totalCheques;
   late String countCheques;
+  late Map<String, dynamic> cheques;
   List<Map<String, dynamic>> dataChart = [];
 
   List imgCheques = [];
@@ -273,9 +274,14 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
     totalCheques = responseBody['total_cheques'];
     countCheques = responseBody['count_cheques'];
     imgCheques = responseBody['img_cheques'];
+    if(int.parse(countCheques) > 0){
+      Map<String, dynamic> entries = {'genre': "cheque", 'sold': int.parse(countCheques)};
+      dataChart.add(entries);
+    }
 
     _extractCoinsAndBanknotes(coins);
     _extractCoinsAndBanknotes(banknotes);
+    print(dataChart);
   }
 
   void _extractCoinsAndBanknotes(Map<String, dynamic> items) {
@@ -489,7 +495,6 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
       );
     }
   }
-
 
   /// prendre une photo de la caméra
   Future<void> _takePhoto() async {
@@ -858,7 +863,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
               child: ListTile(
                 leading: Icon(Icons.paid_outlined, size: 36),
                 title: Text("Montant des pièces: ${totalCoins.isNotEmpty ? '$totalCoins €' : 'N/A'}"),
-                subtitle: Text("Nombre de pièces: ${totalCoins.isNotEmpty ? countCoins : 'N/A'}"),
+                subtitle: Text("Nombre de pièces: ${countCoins.isNotEmpty ? countCoins : 'N/A'}"),
               ),
             ),
             if(_isProcess == false) Card(
@@ -869,8 +874,11 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
                 trailing: IconButton(
                   icon: Icon(Icons.add_box_outlined),
                   onPressed: () {
-                    // Votre fonction à exécuter lorsque l'icône est pressée
-                    showChequeDetail(_imageFile!);
+                    if(imgCheques.length != 0){
+                      showChequeDetail();
+                    }else{
+                      print("non");
+                    }
                   },
                 ),
               ),
@@ -947,15 +955,11 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
     }
   }
 
-  Future showChequeDetail(XFile inputImage) async {
+  Future showChequeDetail() async {
     String path = imgCheques[0];
-
-
     final InputImage? inputImage = await downloadImage('http://149.202.49.224:8000/$path');
     final recognizedText = await _textRecognizer.processImage(inputImage!);
-    print(recognizedText.text);
-    Navigator.pushNamed(context, '/chequeDetail', arguments: {'path': path, 'txt': recognizedText.text});
-    print("TAble");
+    Navigator.pushNamed(context, '/chequeDetail', arguments: {'imgCheques': imgCheques, 'id': 1, 'path': path, 'txt': recognizedText.text});
   }
 
   /// Télécharge un fichier Excel avec des données de tableau et une capture d'écran d'un widget.
