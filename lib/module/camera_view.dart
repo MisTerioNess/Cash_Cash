@@ -393,7 +393,9 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
       }
     }
 
-    setState(() {});
+    setState(() {
+
+    });
   }
 
   /// Initialisation de l'état de base.
@@ -787,6 +789,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
                     'amountOfCheques': totalCheques,
                     'numberOfCheques': countCheques
                   };
+                  print(objHistorisation);
                   addToDataList(objHistorisation);
                   fetchData();
 
