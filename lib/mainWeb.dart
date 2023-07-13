@@ -320,16 +320,16 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
               ),
             if (_imageFile == null)
               Text("Veuillez choisir une image"),
-            if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement et le filtre blanc
-              Container(
-                color: Colors.white.withOpacity(0.5), // Couleur blanche avec opacité de 10%
-              ),
-            if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement
-              Center(
-                child: CircularProgressIndicator(
-                  color: Color.fromARGB(255, 130,71,207),
-                ),
-              ), // Si isProcessing est true, affichez le spinner de chargement
+            // if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement et le filtre blanc
+            //   Container(
+            //     color: Colors.white.withOpacity(0.5), // Couleur blanche avec opacité de 10%
+            //   ),
+            // if (_isProcess == true) // Si _isProcessing est true, affichez le spinner de chargement
+            //   Center(
+            //     child: CircularProgressIndicator(
+            //       color: Color.fromARGB(255, 130,71,207),
+            //     ),
+            //   ), // Si isProcessing est true, affichez le spinner de chargement
           ],
         ),
       ),
@@ -548,7 +548,18 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                     coord: PolarCoord(transposed: true, dimCount: 1),
                   ),
                 )
-            ),
+            ),if(_isProcess == false) ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color.fromARGB(255, 130,71,207),  // Changer la couleur de l'arrière-plan ici
+              ),
+              child: Text(
+                'Télécharger au format Excel',
+                style: TextStyle(color: Colors.white),  // Changer la couleur du texte ici
+              ),
+              onPressed: () {
+                _downloadExcel(context);
+              },
+            )
           ],
         ),
       ),
