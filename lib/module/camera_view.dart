@@ -131,7 +131,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
   final bool _allowPicker = true;
   bool _changingCameraLens = false;
   bool _showDashboard = false;
-  double _scaleFactor = 1.0;
+  final double _scaleFactor = 1.0;
   double _baseScaleFactor = 1.0;
   late final AnimationController _animationController;
   late final Animation<double> _animation;
@@ -145,22 +145,6 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
   bool _isEditing = false;
   bool _isTextValid = true;
   String _initialText = 'Mon cash cash';
-
-  // historique
-  List<CardItem> cards = [];
-  void fetchData() async {
-    final cardItemList = await getCardItemList();
-    setState(() {
-      cards = cardItemList;
-    });
-  }
-  Future<void> clearDataList() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-
-    prefs.remove('dataList');
-
-    setState(() {});
-  }
 
   // données
   late String total;
@@ -307,6 +291,21 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
     return formattedDate;
   }
 
+  // historique
+  List<CardItem> cards = [];
+  void fetchData() async {
+    final cardItemList = await getCardItemList();
+    setState(() {
+      cards = cardItemList;
+    });
+  }
+  Future<void> clearDataList() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    prefs.remove('dataList');
+
+    setState(() {});
+  }
   Future<void> addToDataList(Map<String, dynamic> newData) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
@@ -329,7 +328,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
     final dataListStringUpdated = jsonEncode(dataList);
     prefs.setString('dataList', dataListStringUpdated);
   }
-
+  /// méthode retournant l'ensemble de l'historique sous forme de card
   Future<List<CardItem>> getCardItemList() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final dataListString = prefs.getString('dataList');
@@ -345,36 +344,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
 
     return [];
   }
-  Future<void> updateCardItem(CardItem card, String newName) async {
-    Map<String, dynamic> map = card.toJson();
-    map.update('name', (value) => newName);
-
-    setState(() {});
-  }
-
-  Future<void> updateNomInDataList(String itemId, String newNom) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final dataListString = prefs.getString('dataList');
-
-    if (dataListString != null) {
-      final decodedList = jsonDecode(dataListString);
-
-      if (decodedList is List<dynamic>) {
-        final dataList = decodedList.map((item) => CardItem.fromJson(item)).toList();
-
-        final updatedDataList = dataList.map((item) {
-          if (item.id == itemId) {
-            item.updateNom(newNom);
-          }
-          return item;
-        }).toList();
-
-        final dataListStringUpdated = jsonEncode(updatedDataList.map((item) => item.toJson()).toList());
-        await prefs.setString('dataList', dataListStringUpdated);
-      }
-    }
-  }
-
+  /// fonction permettant de retirer une card de l'historique
   Future<void> removeCardFromDataList(String itemId) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final dataListString = prefs.getString('dataList');
@@ -412,7 +382,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
     _imagePicker = ImagePicker();
 
     // historisation
-    this.date = getCurrentDate();
+    date = getCurrentDate();
     fetchData();
 
     if (cameras.any(
@@ -877,7 +847,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
                 trailing: IconButton(
                   icon: Icon(Icons.add_box_outlined),
                   onPressed: () {
-                    if(imgCheques.length != 0){
+                    if(imgCheques.isNotEmpty) {
                       showChequeDetail();
                     }else{
                       print("non");
@@ -1070,7 +1040,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
                 Padding(
                   padding: const EdgeInsets.only(left: 20.0),
                   child: Text(
-                    '${this.date} - ${_initialText}',
+                    '$date - $_initialText',
                     style: TextStyle(fontSize: 16),
                   ),
                 ),
@@ -1117,12 +1087,12 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
 
   /// Widget affichant l'historique dans la gallerie
   Widget _historisation() {
-    ScrollController _scrollController = ScrollController();
+    ScrollController scrollController = ScrollController();
 
-    _scrollController.addListener(() {
+    scrollController.addListener(() {
       setState(() {
-        if (_scrollController.position.pixels == 0.0) {
-          _scrollController.animateTo(
+        if (scrollController.position.pixels == 0.0) {
+          scrollController.animateTo(
             0,
             duration: Duration(milliseconds: 500),
             curve: Curves.easeInOut,
@@ -1132,7 +1102,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
     });
 
     return ListView.builder(
-      controller: _scrollController,
+      controller: scrollController,
       itemCount: cards.length,
       itemBuilder: (context, index) {
         return GestureDetector(
