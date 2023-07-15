@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'module/chequeDetail.dart';
+import 'module/cheque_detail.dart';
 import 'module/object_detector.dart';
 import 'package:universal_platform/universal_platform.dart';
-import 'mainWeb.dart';
+import 'main_web.dart';
 
 /// Initialisation d'une liste qui va contenir les caméras de l'appareil de l'utilisateur.
 List<CameraDescription> cameras = [];
