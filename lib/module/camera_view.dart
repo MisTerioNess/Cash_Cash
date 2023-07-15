@@ -509,7 +509,7 @@ class _CameraViewState extends State<CameraView> with TickerProviderStateMixin {
     });
 
     final path = _imageFile?.path;
-    print("path: ${path}");
+    print("path: $path");
     _isProcess = true;
     uploadImage(File(path!));
   }
