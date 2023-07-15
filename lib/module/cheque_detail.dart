@@ -62,7 +62,7 @@ class ChequeDetailPage  extends State<ChequeDetail> with SingleTickerProviderSta
 
   @override
   void dispose() {
-    _animationController?.dispose();  // C'est ici que vous libérez les ressources
+    _animationController.dispose();  // C'est ici que vous libérez les ressources
     super.dispose();
   }
 
